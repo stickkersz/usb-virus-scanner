@@ -120,10 +120,14 @@ coverage. (Windows one-shot installer for the source layout:
 python gui.py          # or double-click the desktop shortcut
 ```
 
-Pick a drive (or **Browse…** a folder) → click **Scan** → read the colored
-banner (green CLEAN / red THREATS). Infected files are quarantined
-automatically; **Quarantine…** lists them and can restore. Tick **Report only**
-to detect without moving anything.
+Pick a drive (or **Browse…** a folder) → click **Scan** → watch the live
+progress bar with **"scanning file X of Y"** and the current file name, then
+read the colored banner (green CLEAN / red THREATS). Infected files are
+quarantined automatically; **Quarantine…** lists them and can restore. Tick
+**Report only** to detect without moving anything.
+
+The UI is thread-off (scanning never blocks the window) and progress events are
+coalesced — one redraw per tick — so even a drive with 100k files stays smooth.
 
 ## CLI (IT / fleet)
 

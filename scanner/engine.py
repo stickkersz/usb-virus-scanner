@@ -11,13 +11,14 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from typing import Callable, List, Optional
 
 from .cache import ScanCache
 from .heuristics import HeuristicEngine, sha256_of
-from .models import Detection, ScanResult, Severity
+from .models import Detection, ProgressEvent, ScanResult, Severity
 from .quarantine import Quarantine
 
 
@@ -160,9 +161,14 @@ class ScanEngine:
                                enabled=config["scanner"].get("use_cache", True))
 
     def scan(self, target: str,
-             progress: Optional[Callable[[str], None]] = None,
+             progress: Optional[Callable[[ProgressEvent], None]] = None,
              quarantine: bool = True) -> ScanResult:
         result = ScanResult(target=target, started=_now())
+
+        def emit(phase, message="", current=0, total=0):
+            if progress:
+                progress(ProgressEvent(phase, message, current, total))
+
         if not os.path.exists(target):
             result.errors.append(f"Target does not exist: {target}")
             result.finished = _now()
@@ -170,8 +176,7 @@ class ScanEngine:
 
         # 1. Single tree walk. Collect (path, size, mtime_ns); apply size cap;
         #    skip files already scanned clean (unchanged) via the cache.
-        if progress:
-            progress(f"indexing {target}")
+        emit("indexing", f"Indexing {target}")
         files: List[tuple[str, int]] = []   # (path, size) for the heuristic pass
         cached_clean = 0
         for path, size, mtime in self._walk(target, result):
@@ -181,10 +186,10 @@ class ScanEngine:
             files.append((path, size))
         result.files_scanned = len(files)
         result.files_skipped += cached_clean
+        total = len(files)
 
         if not files:
-            if progress:
-                progress("nothing new to scan (all cached clean)")
+            emit("done", "Nothing new to scan (all cached clean)")
             result.finished = _now()
             return result
 
@@ -193,8 +198,7 @@ class ScanEngine:
         scan_complete = True
         try:
             list_path = self._write_file_list(files)
-            if progress:
-                progress(f"ClamAV signature scan: {len(files)} file(s)")
+            emit("clamav", f"ClamAV signature scan ({total} files)", 0, total)
             clam_hits, clam_errs = self.clam.scan_filelist(list_path)
             result.detections.extend(clam_hits)
             result.errors.extend(clam_errs)
@@ -212,14 +216,21 @@ class ScanEngine:
                     pass
 
         # 3. Heuristic/hash/YARA layer, parallel across candidate files.
+        #    Progress is throttled to ~30 events/sec so a huge drive can't flood
+        #    the UI's event queue (the old per-file firehose caused the lag).
         if self.heur.enabled:
+            done_n = 0
+            last_emit = 0.0
             with ThreadPoolExecutor(max_workers=self.workers) as pool:
                 futures = {pool.submit(self.heur.scan_file, p, s): p
                            for p, s in files}
                 for fut in as_completed(futures):
                     p = futures[fut]
-                    if progress:
-                        progress(f"heuristic: {p}")
+                    done_n += 1
+                    now = time.monotonic()
+                    if progress and (now - last_emit >= 0.03 or done_n == total):
+                        last_emit = now
+                        emit("scanning", p, done_n, total)
                     try:
                         result.detections.extend(fut.result())
                     except Exception as exc:  # never let one file kill the scan

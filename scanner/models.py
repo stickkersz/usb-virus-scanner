@@ -15,6 +15,16 @@ class Severity(str, Enum):
 
 
 @dataclass
+class ProgressEvent:
+    """Structured scan progress for UIs: which phase, current file, and counts
+    so a front-end can draw a real percentage bar without guessing."""
+    phase: str            # "indexing" | "clamav" | "scanning" | "done"
+    message: str = ""     # current file path or a status line
+    current: int = 0      # files processed so far (scanning phase)
+    total: int = 0        # total candidate files (0 until known)
+
+
+@dataclass
 class Detection:
     path: str
     severity: Severity

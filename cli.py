@@ -56,11 +56,17 @@ def _print_summary(result, report_path: str) -> None:
     print("-" * 60)
 
 
+def _fmt_progress(ev) -> str:
+    if ev.phase == "scanning" and ev.total:
+        return f"  [{ev.current}/{ev.total}] {ev.message}"
+    return f"  {ev.message}"
+
+
 def cmd_scan(args) -> int:
     cfg, engine, logger = _load(args)
     result = engine.scan(
         args.path,
-        progress=(lambda m: print(f"  {m}")) if args.verbose else None,
+        progress=(lambda ev: print(_fmt_progress(ev))) if args.verbose else None,
         quarantine=not args.no_quarantine,
     )
     log_result(logger, result)
