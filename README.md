@@ -365,6 +365,13 @@ tool runs even if the file is missing.
   byte-by-byte. Set `deep_scan_all: true` for max thoroughness.
 - **Parallel** — `workers: auto` scales to CPU cores (capped so a single-disk
   laptop doesn't thrash); `multiscan: true` uses clamd's parallel engine.
+- **Single-read deep scan** — a file's hash, YARA match, and entropy check all
+  run off one read of the bytes (small files buffered once; huge files stream),
+  instead of reading the file 2-3 times.
+- **No redundant `stat`** — the cache reuses size/mtime from the initial walk.
+- **Resident-daemon signature scan** — prefers `clamdscan` (ClamAV DB stays in
+  RAM, ~10-100x faster on repeat scans) and auto-falls back to one-shot
+  `clamscan` if the `clamd` service isn't running.
 - **Skip archives** for extra speed on weak hardware: `scan_archives: false`.
 
 Cheatsheet — very slow laptop: `deep_scan_max_mb: 20`, `scan_archives: false`,

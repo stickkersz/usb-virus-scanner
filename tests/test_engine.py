@@ -99,6 +99,27 @@ def test_no_cache_when_clamav_errors(config, fake_usb, tmp_path, monkeypatch):
     assert res2.files_skipped == 0
 
 
+def test_clamd_down_falls_back_to_clamscan(config, tmp_path, monkeypatch):
+    """If the daemon errors (clamd not running), scan_filelist retries with
+    one-shot clamscan instead of failing the whole signature pass."""
+    from scanner.engine import ClamAV
+    clam = ClamAV(config["scanner"])
+    clam.clamdscan = "/bin/clamdscan"     # pretend both exist
+    clam.clamscan = "/bin/clamscan"
+    clam.prefer_daemon = True
+    calls = []
+
+    def fake_run(binary, is_daemon, lp):
+        calls.append(is_daemon)
+        if is_daemon:
+            return [], ["Could not connect to clamd"]     # daemon down
+        return [], []                                      # clamscan clean
+    monkeypatch.setattr(clam, "_run", fake_run)
+    dets, errs = clam.scan_filelist("list.txt")
+    assert calls == [True, False]         # tried daemon, then fell back
+    assert errs == []                     # clamscan succeeded
+
+
 def test_cache_path_normalized_match(config, fake_usb, tmp_path, monkeypatch):
     """A ClamAV hit echoed with different case/slashes still marks the file
     infected (not cached clean) thanks to normalized matching."""

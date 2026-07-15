@@ -48,6 +48,9 @@ RANSOM_NOTE_KEYWORDS = ("decrypt", "recover", "restore", "unlock", "ransom")
 # the norm for fresh trojan/malware variants that evade signatures.
 PACKED_ENTROPY_THRESHOLD = 7.2
 _ENTROPY_SAMPLE_BYTES = 256 * 1024
+# Files at or below this are read once into memory and shared across the hash,
+# YARA and entropy checks. Larger files stream instead, so we never OOM.
+_IN_MEMORY_CAP = 64 * 1024 * 1024
 
 
 def shannon_entropy(data: bytes) -> float:
@@ -199,8 +202,21 @@ class HeuristicEngine:
         if not (wants_deep and self._needs_deep_scan(ext, size)):
             return out
 
-        # compute hash once, shared by blocklist match + YARA metadata
-        digest = sha256_of(path) if self._hashes else None
+        # Read the file ONCE and feed all three deep checks (hash, YARA, entropy)
+        # from the same buffer -- avoids re-reading the file 2-3x on slow disks.
+        # Files above the in-memory cap fall back to streaming so we never OOM.
+        digest = None
+        buf = None
+        if size and size <= _IN_MEMORY_CAP:
+            buf = head_sample(path, size)          # whole small file, one read
+        if buf is not None:
+            digest = hashlib.sha256(buf).hexdigest() if self._hashes else None
+            yara_target = {"data": buf}
+            head = buf[:_ENTROPY_SAMPLE_BYTES]
+        else:                                       # large file: stream, don't buffer
+            digest = sha256_of(path) if self._hashes else None
+            yara_target = {"filepath": path}
+            head = head_sample(path)
 
         if digest and digest in self._hashes:
             out.append(Detection(path, Severity.INFECTED,
@@ -209,8 +225,7 @@ class HeuristicEngine:
 
         if self._yara_rules is not None:
             try:
-                matches = self._yara_rules.match(path)
-                for m in matches:
+                for m in self._yara_rules.match(**yara_target):
                     out.append(Detection(path, Severity.INFECTED,
                                          f"YARA:{m.rule}", "yara", sha256=digest))
             except Exception:
@@ -218,12 +233,10 @@ class HeuristicEngine:
 
         # Packed/obfuscated executable: high entropy in a PE (MZ) file. Catches
         # fresh trojan variants that no signature covers yet.
-        if self.flag_packed_exe:
-            head = head_sample(path)
-            if head and head[:2] == b"MZ" and \
-                    shannon_entropy(head) >= PACKED_ENTROPY_THRESHOLD:
-                out.append(Detection(path, Severity.SUSPICIOUS,
-                                     "packed/high-entropy executable "
-                                     "(possible obfuscated malware)", "heuristic"))
+        if self.flag_packed_exe and head and head[:2] == b"MZ" and \
+                shannon_entropy(head) >= PACKED_ENTROPY_THRESHOLD:
+            out.append(Detection(path, Severity.SUSPICIOUS,
+                                 "packed/high-entropy executable "
+                                 "(possible obfuscated malware)", "heuristic"))
 
         return out

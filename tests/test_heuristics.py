@@ -124,6 +124,17 @@ def test_low_entropy_exe_not_flagged_packed(signatures, tmp_path):
     assert not any("packed" in d.threat for d in dets)
 
 
+def test_streaming_path_still_detects(signatures, fake_usb):
+    """size=0 forces the large-file streaming branch (no in-memory buffer);
+    hash blocklist + YARA must still fire identically to the buffered path."""
+    e = _engine(signatures)
+    mal = fake_usb["dir"] / "mal.bin"
+    dets = e.scan_file(str(mal), size=0)           # 0 -> streaming branch
+    assert any(d.source == "hash" for d in dets)
+    ps = fake_usb["dir"] / "dl.ps1"
+    assert any(d.source == "yara" for d in e.scan_file(str(ps), size=0))
+
+
 def test_ransomware_yara_note(signatures, tmp_path):
     e = _engine(signatures)
     f = tmp_path / "help.txt"

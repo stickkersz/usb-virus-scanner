@@ -83,12 +83,24 @@ class ClamAV:
         Feeding ClamAV a precomputed list avoids a second full tree walk (the
         Python side already walked it) and lets the cache exclude unchanged
         files from the signature scan too.
+
+        Prefers the resident daemon (fast: signature DB stays in RAM). If the
+        daemon isn't running, transparently falls back to one-shot clamscan so a
+        stopped clamd service never blocks scanning.
         """
         chosen = self._binary()
         if not chosen:
             return [], ["ClamAV binary not found; signature scan skipped."]
         binary, is_daemon = chosen
 
+        dets, errs = self._run(binary, is_daemon, list_path)
+        if is_daemon and errs and self.clamscan:
+            # Daemon likely down (couldn't connect). Retry with plain clamscan.
+            return self._run(self.clamscan, False, list_path)
+        return dets, errs
+
+    def _run(self, binary: str, is_daemon: bool,
+             list_path: str) -> tuple[List[Detection], List[str]]:
         cmd = [binary, "--no-summary", "--infected", f"--file-list={list_path}"]
         # Detect adware / potentially-unwanted programs (works for clamscan and
         # clamdscan). Directly covers the "adware / PUP" threat category.
@@ -177,13 +189,14 @@ class ScanEngine:
         # 1. Single tree walk. Collect (path, size, mtime_ns); apply size cap;
         #    skip files already scanned clean (unchanged) via the cache.
         emit("indexing", f"Indexing {target}")
-        files: List[tuple[str, int]] = []   # (path, size) for the heuristic pass
+        # (path, size, mtime_ns) -- mtime kept so caching reuses it (no re-stat).
+        files: List[tuple[str, int, int]] = []
         cached_clean = 0
         for path, size, mtime in self._walk(target, result):
             if self.cache.is_clean(path, size, mtime):
                 cached_clean += 1
                 continue
-            files.append((path, size))
+            files.append((path, size, mtime))
         result.files_scanned = len(files)
         result.files_skipped += cached_clean
         total = len(files)
@@ -223,7 +236,7 @@ class ScanEngine:
             last_emit = 0.0
             with ThreadPoolExecutor(max_workers=self.workers) as pool:
                 futures = {pool.submit(self.heur.scan_file, p, s): p
-                           for p, s in files}
+                           for p, s, _mt in files}
                 for fut in as_completed(futures):
                     p = futures[fut]
                     done_n += 1
@@ -255,13 +268,10 @@ class ScanEngine:
         #    scan was incomplete -- both would let malware be skipped later.
         flagged = {_norm(d.path) for d in result.detections}
         if scan_complete:
-            for path, size in files:
+            for path, size, mtime in files:
                 if _norm(path) not in flagged:
-                    try:
-                        st = os.stat(path)
-                        self.cache.mark_clean(path, st.st_size, st.st_mtime_ns)
-                    except OSError:
-                        pass
+                    # reuse size/mtime from the walk -- no extra os.stat per file
+                    self.cache.mark_clean(path, size, mtime)
             self.cache.save()
 
         result.finished = _now()
@@ -303,13 +313,13 @@ class ScanEngine:
                 continue
 
     @staticmethod
-    def _write_file_list(files: List[tuple[str, int]]) -> str:
+    def _write_file_list(files: List[tuple]) -> str:
         # UTF-8 is correct for ClamAV 1.x (the version we bundle) on every
         # platform. ASCII paths work with any build; any file ClamAV can't
         # reopen is still fully covered by the hash/YARA layer, which uses
         # Python's native path handling.
         fd, path = tempfile.mkstemp(prefix="usbscan_list_", suffix=".txt")
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            for p, _size in files:
+            for p, *_rest in files:
                 fh.write(p + "\n")
         return path
