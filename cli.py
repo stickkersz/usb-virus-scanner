@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""USB Virus Scanner — command-line entry point.
+"""USB Virus Scanner - command-line entry point.
 
 Commands:
   scan <path>       Scan a drive/folder/file now.
@@ -33,7 +33,7 @@ def _load(args) -> tuple[Config, ScanEngine, object]:
     logger = setup_logging(cfg["logging"])
     engine = ScanEngine(cfg, BASE_DIR)
     if not engine.clam.available:
-        logger.warning("ClamAV not found — running heuristic/hash/YARA layer only. "
+        logger.warning("ClamAV not found - running heuristic/hash/YARA layer only. "
                        "Install ClamAV for full signature coverage.")
     return cfg, engine, logger
 
@@ -75,14 +75,14 @@ def cmd_watch(args) -> int:
     quarantine = not args.no_quarantine
 
     def on_insert(root: str) -> None:
-        logger.info("Removable drive inserted: %s — auto-scanning", root)
-        print(f"\n[+] Drive inserted: {root} — scanning...")
+        logger.info("Removable drive inserted: %s - auto-scanning", root)
+        print(f"\n[+] Drive inserted: {root} - scanning...")
         result = engine.scan(root, quarantine=quarantine)
         log_result(logger, result)
         report = write_report(cfg["reporting"], result)
         _print_summary(result, report)
         if result.infected:
-            print(f"\n  !!! {len(result.infected)} THREAT(S) on {root} — quarantined.")
+            print(f"\n  !!! {len(result.infected)} THREAT(S) on {root} - quarantined.")
 
     print(f"USB Virus Scanner watcher running (poll {poll}s). Ctrl+C to stop.")
     print(f"Currently attached removable drives: {list_removable() or 'none'}")

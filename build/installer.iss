@@ -1,14 +1,14 @@
-; Inno Setup script — builds a single USBVirusScannerSetup.exe installer.
+; Inno Setup script - builds a single USBVirusScannerSetup.exe installer.
 ; Compile:  iscc build\installer.iss   (or open in Inno Setup Compiler)
 ; Prereq :  run build.ps1 first so dist\USBVirusScanner.exe and dist\usbscan.exe exist.
 ;
 ; FULLY-OFFLINE build: run build\fetch-vendor.ps1 once to populate vendor\ClamAV\
 ; (engine + virus database). This script detects that at COMPILE time and, when
-; present, bundles ClamAV and omits every online step — the resulting setup.exe
+; present, bundles ClamAV and omits every online step - the resulting setup.exe
 ; needs no internet at all. If vendor\ is empty, an optional online task fetches
 ; ClamAV via winget instead.
 ;
-; Produces:  Output\USBVirusScannerSetup.exe  — one file to hand to employees.
+; Produces:  Output\USBVirusScannerSetup.exe  - one file to hand to employees.
 
 #define AppName    "USB Virus Scanner"
 #define AppVersion "1.0.0"

@@ -1,9 +1,9 @@
 <#
-    fetch-vendor.ps1 — ONE-TIME, run on the Windows build machine WITH internet.
+    fetch-vendor.ps1  -  ONE-TIME, run on the Windows build machine WITH internet.
 
     Downloads the ClamAV engine + the full virus-signature database into
     vendor\ClamAV\. After this, build\build.ps1 bundles them and the resulting
-    USBVirusScannerSetup.exe is FULLY OFFLINE — employees need no internet.
+    USBVirusScannerSetup.exe is FULLY OFFLINE  -  employees need no internet.
 
     Usage:
         powershell -ExecutionPolicy Bypass -File build\fetch-vendor.ps1

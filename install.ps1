@@ -1,5 +1,5 @@
 <#
-    USB Virus Scanner — Windows installer / bootstrap.
+    USB Virus Scanner  -  Windows installer / bootstrap.
     Run in an elevated PowerShell:  powershell -ExecutionPolicy Bypass -File install.ps1
 
     - Installs ClamAV (via winget if available) and Python deps.

@@ -1,5 +1,5 @@
 <#
-    build.ps1 — one command to produce the employee installer.
+    build.ps1  -  one command to produce the employee installer.
     Run on a Windows build machine (with Python 3.9+):
 
         powershell -ExecutionPolicy Bypass -File build\build.ps1
@@ -9,7 +9,7 @@
       2. Freeze gui.py + cli.py into dist\USBVirusScanner.exe and dist\usbscan.exe.
       3. If Inno Setup (iscc) is available, compile Output\USBVirusScannerSetup.exe.
 
-    Result: Output\USBVirusScannerSetup.exe — the single file to deploy.
+    Result: Output\USBVirusScannerSetup.exe  -  the single file to deploy.
 
     Pass -Offline to first download+bundle ClamAV so the installer needs NO
     internet on the employee PC (runs build\fetch-vendor.ps1 for you).
@@ -69,7 +69,7 @@ if (-not $iscc) {
 if ($iscc) {
     & $iscc "build\installer.iss"
     Write-Host "`nDONE. Installer: Output\USBVirusScannerSetup.exe" -ForegroundColor Green
-    Write-Host "Hand that ONE file to employees — double-click, Next, done." -ForegroundColor Green
+    Write-Host "Hand that ONE file to employees  -  double-click, Next, done." -ForegroundColor Green
 } else {
     Write-Warning "Inno Setup (iscc) not found. Install it from https://jrsoftware.org/isdl.php"
     Write-Warning "Then re-run, or compile manually:  iscc build\installer.iss"
