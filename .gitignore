@@ -7,6 +7,8 @@ __pycache__/
 logs/
 reports/
 quarantine/
+# stray Windows-path dirs created when the default config runs off-Windows
+C:*
 build/build/
 dist/
 Output/
