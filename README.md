@@ -139,6 +139,9 @@ usbscan watch                  # auto-scan every USB as it is inserted
 usbscan update                 # refresh ClamAV signatures (freshclam)
 usbscan quarantine             # list quarantined files
 usbscan quarantine --restore <ID> --to D:\recovered.bin
+usbscan quarantine --delete <ID>       # permanently delete one (irreversible)
+usbscan quarantine --purge             # permanently delete ALL (asks to confirm)
+usbscan quarantine --purge --yes       # ...skip the confirmation
 ```
 
 Exit code `0` = clean, `1` = threats found — usable in scripts / GPO. (From

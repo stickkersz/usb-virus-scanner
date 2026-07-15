@@ -120,12 +120,23 @@ Infected files are **moved off the drive** into a safe quarantine folder and
 "neutralized" so they can't accidentally run. Nothing is permanently deleted —
 you can put a file back if it was a false alarm.
 
-**To view or restore quarantined files:**
+**To view, restore, or delete quarantined files:**
 
 1. In the window, click **Quarantine…**.
 2. You'll see a list of everything quarantined (name, threat, original location).
 3. To bring one back: select it → **Restore selected…** → confirm.
    ⚠️ Only restore a file if you're **sure** it's safe — it was flagged as malware.
+4. To wipe malware for good: select it → **Delete selected**, or **🗑 Delete ALL**
+   to nuke everything in quarantine. You'll be asked to confirm — **deletion is
+   permanent and cannot be undone.**
+
+From the command line:
+
+```powershell
+usbscan quarantine --delete <ID>     # delete one, forever
+usbscan quarantine --purge           # delete everything (asks to confirm)
+usbscan quarantine --purge --yes     # ...no prompt (for scripts)
+```
 
 ### 3. Automatic scanning when you plug in a USB
 

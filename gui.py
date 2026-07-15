@@ -352,8 +352,21 @@ class QuarantineWindow(tk.Toplevel):
         bar = ttk.Frame(wrap)
         bar.pack(fill="x", pady=(8, 0))
         ttk.Button(bar, text="Refresh", command=self._reload).pack(side="left")
-        ttk.Button(bar, text="Restore selected…", style="Accent.TButton",
+        # Danger zone: permanent deletion (irreversible).
+        self._danger = tk.Button(bar, text="🗑 Delete ALL", fg="white",
+                                 bg=COL["infected"], activebackground="#b91c1c",
+                                 activeforeground="white", relief="flat",
+                                 font=("Segoe UI Semibold", 9), padx=12, pady=5,
+                                 command=self._delete_all)
+        self._danger.pack(side="left", padx=(8, 0))
+        ttk.Button(bar, text="Restore selected…",
                    command=self._restore).pack(side="right")
+        self._del_btn = tk.Button(bar, text="Delete selected", fg="white",
+                                  bg=COL["infected"], activebackground="#b91c1c",
+                                  activeforeground="white", relief="flat",
+                                  font=("Segoe UI Semibold", 9), padx=12, pady=5,
+                                  command=self._delete_selected)
+        self._del_btn.pack(side="right", padx=(0, 8))
         self._reload()
 
     def _reload(self) -> None:
@@ -385,6 +398,35 @@ class QuarantineWindow(tk.Toplevel):
             messagebox.showerror(
                 "Restore failed",
                 "Could not restore this item (original location unavailable?).")
+
+    def _delete_selected(self) -> None:
+        sel = self.tree.selection()
+        if not sel:
+            return
+        qid = self.tree.item(sel[0], "values")[0]
+        if not messagebox.askyesno(
+                "Delete permanently",
+                "Permanently delete this malware file?\n\n"
+                "This CANNOT be undone.", icon="warning", default="no"):
+            return
+        if self.q.delete(qid):
+            self._reload()
+        else:
+            messagebox.showerror("Delete failed", "Could not delete this item.")
+
+    def _delete_all(self) -> None:
+        n = len(self.q.list_entries())
+        if n == 0:
+            messagebox.showinfo("Quarantine", "Quarantine is already empty.")
+            return
+        if not messagebox.askyesno(
+                "Delete ALL permanently",
+                f"Permanently delete ALL {n} quarantined malware file(s)?\n\n"
+                "This CANNOT be undone.", icon="warning", default="no"):
+            return
+        deleted = self.q.delete_all()
+        messagebox.showinfo("Done", f"Permanently deleted {deleted} file(s).")
+        self._reload()
 
 
 def main() -> None:

@@ -80,6 +80,30 @@ class Quarantine:
                             "ts": time.time()})
         return dest
 
+    def delete(self, qid: str) -> bool:
+        """Permanently delete a quarantined file. IRREVERSIBLE. Returns True on
+        success (or if the file was already gone but the entry existed)."""
+        entry = self._find(qid)
+        if not entry or entry.get("status") != "quarantined":
+            return False
+        try:
+            src = entry.get("quarantine")
+            if src and os.path.isfile(src):
+                os.remove(src)
+        except (OSError, PermissionError):
+            return False
+        self._append_index({"id": qid, "status": "deleted", "ts": time.time()})
+        return True
+
+    def delete_all(self) -> int:
+        """Permanently delete every quarantined file. IRREVERSIBLE. Returns the
+        number of items deleted."""
+        n = 0
+        for entry in self.list_entries():
+            if self.delete(entry["id"]):
+                n += 1
+        return n
+
     # ---- index helpers -------------------------------------------------
     def _append_index(self, record: dict) -> None:
         with open(self.index_path, "a", encoding="utf-8") as fh:

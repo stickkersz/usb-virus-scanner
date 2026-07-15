@@ -51,6 +51,34 @@ def test_store_missing_file_returns_none(tmp_path):
     assert q.store(str(tmp_path / "nope.bin"), "t") is None
 
 
+def test_delete_removes_file_permanently(tmp_path):
+    src = tmp_path / "m.bin"
+    src.write_bytes(b"malware")
+    q = Quarantine({"path": str(tmp_path / "q"), "neutralize": True})
+    q.store(str(src), "t")
+    qid = q.list_entries()[0]["id"]
+    qfile = q.list_entries()[0]["quarantine"]
+    assert q.delete(qid) is True
+    assert not os.path.isfile(qfile)              # gone from disk
+    assert q.list_entries() == []                 # gone from index
+    assert q.restore(qid) is None                 # can't restore a deleted item
+
+
+def test_delete_unknown_id(tmp_path):
+    q = Quarantine({"path": str(tmp_path / "q"), "neutralize": True})
+    assert q.delete("nope") is False
+
+
+def test_delete_all(tmp_path):
+    q = Quarantine({"path": str(tmp_path / "q"), "neutralize": True})
+    for i in range(4):
+        f = tmp_path / f"m{i}.bin"
+        f.write_bytes(b"x" * (i + 1))
+        q.store(str(f), f"t{i}")
+    assert q.delete_all() == 4
+    assert q.list_entries() == []
+
+
 def test_non_neutralize_moves_file(tmp_path):
     src = tmp_path / "m.bin"
     payload = b"hello-world"

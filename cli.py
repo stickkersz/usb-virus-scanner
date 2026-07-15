@@ -117,6 +117,24 @@ def cmd_quarantine(args) -> int:
         dest = q.restore(args.restore, to=args.to)
         print(f"Restored to: {dest}" if dest else "Restore failed (unknown id?).")
         return 0 if dest else 1
+    if args.delete:
+        ok = q.delete(args.delete)
+        print("Deleted permanently." if ok else "Delete failed (unknown id?).")
+        return 0 if ok else 1
+    if args.purge:
+        pending = len(q.list_entries())
+        if pending == 0:
+            print("Quarantine already empty.")
+            return 0
+        if not args.yes:
+            reply = input(f"Permanently delete all {pending} quarantined file(s)? "
+                          "This cannot be undone [y/N]: ").strip().lower()
+            if reply not in ("y", "yes"):
+                print("Aborted.")
+                return 1
+        n = q.delete_all()
+        print(f"Permanently deleted {n} file(s).")
+        return 0
     entries = q.list_entries()
     if not entries:
         print("Quarantine empty.")
@@ -172,9 +190,16 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--all", action="store_true", help="Include fixed disks")
     d.set_defaults(func=cmd_drives)
 
-    q = sub.add_parser("quarantine", help="List or restore quarantined files")
+    q = sub.add_parser("quarantine",
+                       help="List, restore, or permanently delete quarantined files")
     q.add_argument("--restore", metavar="ID", help="Restore a quarantined file by id")
     q.add_argument("--to", help="Restore destination path (default: original)")
+    q.add_argument("--delete", metavar="ID",
+                   help="Permanently delete one quarantined file (irreversible)")
+    q.add_argument("--purge", action="store_true",
+                   help="Permanently delete ALL quarantined files (irreversible)")
+    q.add_argument("--yes", action="store_true",
+                   help="Skip the confirmation prompt for --purge")
     q.set_defaults(func=cmd_quarantine)
 
     u = sub.add_parser("update", help="Update ClamAV signatures (freshclam)")
