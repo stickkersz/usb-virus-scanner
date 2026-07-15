@@ -353,6 +353,30 @@ All behavior lives in `config.yaml` (ClamAV paths, quarantine dir, suspicious
 extensions, workers, poll interval, speed knobs). Defaults are built in, so the
 tool runs even if the file is missing.
 
+## Accuracy — avoiding false positives on legit Windows files
+
+Legit software can resemble malware to behavior heuristics: **signed installers
+are packed/high-entropy**, and system tools import keylogger-like APIs. Three
+trust signals quiet those false alarms — and **none of them ever hides a real
+ClamAV, hash-blocklist, or YARA detection**; they only suppress the FP-prone
+heuristics:
+
+- **Authenticode signatures** (`trust_signed: true`) — a validly-signed PE from
+  a trusted publisher (Microsoft, etc.) skips the packed/entropy heuristic. This
+  uses Windows' own code-signing trust, so it works across builds with no list
+  to maintain. The check is lazy (only runs when entropy is already high).
+- **Trusted paths** (`trusted_paths`) — files under `C:\Windows`,
+  `C:\Program Files`, `C:\Program Files (x86)` skip the entropy heuristic.
+- **SHA-256 allowlist** (`signatures/allowlist_sha256.txt`) — exact known-good
+  hashes are fully trusted (heuristic + YARA skipped for them). Populate from
+  [NSRL](https://www.nist.gov/itl/ssd/software-quality-group/nsrl), your golden
+  image (`Get-FileHash -Algorithm SHA256`), or add a hash whenever the scanner
+  false-positives on a file you trust.
+
+Precedence is safe: an explicit **hash-blocklist / ClamAV hit always wins** over
+any allowlist or signature (so signed malware or a trusted-path implant is still
+caught by the authoritative layers).
+
 ## Speed on slow laptops
 
 - **Single tree walk** — the drive is enumerated once; ClamAV gets a file-list

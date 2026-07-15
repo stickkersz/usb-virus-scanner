@@ -57,6 +57,19 @@ heuristics:
   flag_double_extension: true
   # SHA-256 hash blocklist file (one hash per line, optional "  # comment").
   hash_blocklist: "signatures/hash_blocklist.txt"
+  # --- False-positive reducers (legit Windows files can look suspicious) ---
+  # Known-GOOD hashes (e.g. from NSRL or your golden image). Files matching are
+  # fully trusted: heuristic + YARA layers are skipped for them.
+  hash_allowlist: "signatures/allowlist_sha256.txt"
+  # Trust a valid Authenticode signature (Windows): suppresses the packed/entropy
+  # heuristic on legit signed software (installers etc.). Never hides a real
+  # ClamAV / blocklist / YARA detection.
+  trust_signed: true
+  # Files under these directories skip the entropy heuristic (system software).
+  trusted_paths:
+    - "C:\\Windows"
+    - "C:\\Program Files"
+    - "C:\\Program Files (x86)"
   # Directory of YARA rule files (*.yar / *.yara). Empty = disabled.
   yara_rules_dir: "signatures/yara"
   # Fast mode: only read+hash+YARA files that are a risky type OR small.

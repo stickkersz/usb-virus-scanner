@@ -141,3 +141,52 @@ def test_ransomware_yara_note(signatures, tmp_path):
     f.write_text("Your files have been encrypted. Pay bitcoin. onion evil@x")
     dets = e.scan_file(str(f), f.stat().st_size)
     assert any(d.source == "yara" and "Ransomware" in d.threat for d in dets)
+
+
+# ---- false-positive reducers -------------------------------------------
+import hashlib as _hashlib
+
+
+def test_allowlisted_hash_suppresses_yara_and_entropy(signatures, tmp_path):
+    # a packed PE that would normally trip the entropy heuristic
+    import os as _os
+    f = tmp_path / "trusted_tool.exe"
+    payload = b"MZ" + _os.urandom(8192)
+    f.write_bytes(payload)
+    allow = tmp_path / "allow.txt"
+    allow.write_text(_hashlib.sha256(payload).hexdigest() + "\n")
+    e = _engine(signatures, hash_allowlist=str(allow), trust_signed=False)
+    dets = e.scan_file(str(f), f.stat().st_size)
+    assert not any("packed" in d.threat for d in dets)   # entropy suppressed
+    assert not any(d.source == "yara" for d in dets)      # YARA suppressed
+
+
+def test_blocklist_wins_over_allowlist(signatures, tmp_path, fake_usb):
+    """A file that is somehow in both lists is treated as INFECTED (bad wins)."""
+    mal = fake_usb["dir"] / "mal.bin"
+    h = _hashlib.sha256(mal.read_bytes()).hexdigest()
+    allow = tmp_path / "allow.txt"
+    allow.write_text(h + "\n")                             # allowlist the bad hash
+    e = _engine(signatures, hash_allowlist=str(allow))     # blocklist already has h
+    dets = e.scan_file(str(mal), mal.stat().st_size)
+    assert any(d.severity == Severity.INFECTED and d.source == "hash"
+               for d in dets)
+
+
+def test_trusted_path_suppresses_entropy(signatures, tmp_path):
+    import os as _os
+    f = tmp_path / "packed.exe"
+    f.write_bytes(b"MZ" + _os.urandom(8192))
+    e = _engine(signatures, trust_signed=False,
+                trusted_paths=[str(tmp_path)])            # whole tmp dir trusted
+    dets = e.scan_file(str(f), f.stat().st_size)
+    assert not any("packed" in d.threat for d in dets)
+
+
+def test_authenticode_false_off_windows(tmp_path):
+    from scanner.heuristics import authenticode_valid
+    import sys
+    f = tmp_path / "x.exe"
+    f.write_bytes(b"MZ")
+    if sys.platform != "win32":
+        assert authenticode_valid(str(f)) is False

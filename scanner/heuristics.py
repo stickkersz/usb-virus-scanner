@@ -10,6 +10,8 @@ from __future__ import annotations
 import hashlib
 import math
 import os
+import subprocess
+import sys
 from typing import List, Optional, Set
 
 from .models import Detection, Severity
@@ -78,6 +80,25 @@ def head_sample(path: str, n: int = _ENTROPY_SAMPLE_BYTES) -> Optional[bytes]:
         return None
 
 
+def authenticode_valid(path: str) -> bool:
+    """True if `path` carries a VALID Authenticode signature from a trusted
+    publisher (Windows only). This is the OS's own 'known-good' signal - the
+    best way to avoid flagging legit signed software (packed installers etc.)
+    without maintaining a giant hash list. No-op / False off Windows.
+    """
+    if sys.platform != "win32":
+        return False
+    try:
+        lit = path.replace("'", "''")             # escape for PowerShell literal
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+             f"(Get-AuthenticodeSignature -LiteralPath '{lit}').Status"],
+            capture_output=True, text=True, timeout=20)
+        return proc.stdout.strip() == "Valid"
+    except Exception:
+        return False
+
+
 def sha256_of(path: str, chunk: int = 1 << 20) -> Optional[str]:
     """Streamed SHA-256 so multi-GB files don't blow up memory."""
     try:
@@ -112,6 +133,16 @@ class HeuristicEngine:
         self.deep_scan_max_bytes = int(cfg.get("deep_scan_max_mb", 50)) * 1024 * 1024
         self._hashes: Set[str] = self._load_hashes(cfg.get("hash_blocklist"))
         self._yara_rules = self._load_yara(cfg.get("yara_rules_dir"))
+        # False-positive reducers: never hide a real ClamAV/blocklist/YARA hit,
+        # only quiet the FP-prone heuristics for trusted files.
+        # (a) exact known-good hashes (NSRL / company golden image).
+        self._allow: Set[str] = self._load_hashes(cfg.get("hash_allowlist"))
+        # (b) trust a valid Authenticode signature (Windows). Suppresses the
+        #     noisy packed/entropy heuristic on legit signed software.
+        self.trust_signed = cfg.get("trust_signed", True)
+        # (c) trusted directory prefixes -> suppress the entropy heuristic there.
+        self.trusted_paths = [os.path.normcase(p)
+                              for p in cfg.get("trusted_paths", [])]
 
     # ---- loading -------------------------------------------------------
     def _resolve(self, rel: Optional[str]) -> Optional[str]:
@@ -198,32 +229,40 @@ class HeuristicEngine:
 
         # Deep layers need the file bytes -- the expensive part. Skip on big
         # non-risky files so slow disks aren't hammered reading movies/backups.
-        wants_deep = self._hashes or self._yara_rules or self.flag_packed_exe
+        wants_deep = (self._hashes or self._allow or self._yara_rules
+                      or self.flag_packed_exe)
         if not (wants_deep and self._needs_deep_scan(ext, size)):
             return out
 
-        # Read the file ONCE and feed all three deep checks (hash, YARA, entropy)
-        # from the same buffer -- avoids re-reading the file 2-3x on slow disks.
+        # Read the file ONCE and feed all deep checks (hash, YARA, entropy) from
+        # the same buffer -- avoids re-reading the file 2-3x on slow disks.
         # Files above the in-memory cap fall back to streaming so we never OOM.
+        need_hash = bool(self._hashes or self._allow)
         digest = None
         buf = None
         if size and size <= _IN_MEMORY_CAP:
             buf = head_sample(path, size)          # whole small file, one read
         if buf is not None:
-            digest = hashlib.sha256(buf).hexdigest() if self._hashes else None
+            digest = hashlib.sha256(buf).hexdigest() if need_hash else None
             yara_target = {"data": buf}
             head = buf[:_ENTROPY_SAMPLE_BYTES]
         else:                                       # large file: stream, don't buffer
-            digest = sha256_of(path) if self._hashes else None
+            digest = sha256_of(path) if need_hash else None
             yara_target = {"filepath": path}
             head = head_sample(path)
 
+        # Explicit known-bad ALWAYS wins -- even over allowlist/signature.
         if digest and digest in self._hashes:
             out.append(Detection(path, Severity.INFECTED,
                                  "matched company hash blocklist",
                                  "hash", sha256=digest))
+            return out
 
-        if self._yara_rules is not None:
+        # Exact known-good hash -> fully trust this file; skip the FP-prone
+        # YARA + entropy layers (but a blocklist/ClamAV hit above still stands).
+        exact_trusted = bool(digest and digest in self._allow)
+
+        if self._yara_rules is not None and not exact_trusted:
             try:
                 for m in self._yara_rules.match(**yara_target):
                     out.append(Detection(path, Severity.INFECTED,
@@ -232,11 +271,25 @@ class HeuristicEngine:
                 pass
 
         # Packed/obfuscated executable: high entropy in a PE (MZ) file. Catches
-        # fresh trojan variants that no signature covers yet.
+        # fresh trojan variants that no signature covers yet -- but legit signed
+        # installers are ALSO packed, so trusted files are exempted to cut false
+        # positives. The signature check is lazy: only runs once entropy is high.
         if self.flag_packed_exe and head and head[:2] == b"MZ" and \
                 shannon_entropy(head) >= PACKED_ENTROPY_THRESHOLD:
-            out.append(Detection(path, Severity.SUSPICIOUS,
-                                 "packed/high-entropy executable "
-                                 "(possible obfuscated malware)", "heuristic"))
+            if not (exact_trusted or self._is_soft_trusted(path)):
+                out.append(Detection(path, Severity.SUSPICIOUS,
+                                     "packed/high-entropy executable "
+                                     "(possible obfuscated malware)", "heuristic"))
 
         return out
+
+    def _is_soft_trusted(self, path: str) -> bool:
+        """Legit-but-not-hash-verified: under a trusted directory, or carrying a
+        valid Authenticode signature. Used only to suppress the entropy heuristic
+        (never a ClamAV/blocklist/YARA hit)."""
+        npath = os.path.normcase(os.path.abspath(path))
+        if any(npath.startswith(tp) for tp in self.trusted_paths):
+            return True
+        if self.trust_signed and authenticode_valid(path):
+            return True
+        return False

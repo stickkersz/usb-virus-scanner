@@ -33,9 +33,16 @@ DEFAULTS = {
         ],
         "flag_double_extension": True,
         "hash_blocklist": "signatures/hash_blocklist.txt",
+        "hash_allowlist": "signatures/allowlist_sha256.txt",
         "yara_rules_dir": "signatures/yara",
         "deep_scan_all": False,
         "deep_scan_max_mb": 50,
+        "trust_signed": True,
+        "trusted_paths": [
+            r"C:\Windows",
+            r"C:\Program Files",
+            r"C:\Program Files (x86)",
+        ],
     },
     "quarantine": {
         "path": r"C:\ProgramData\USBVirusScanner\Quarantine",

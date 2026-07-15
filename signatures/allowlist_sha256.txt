@@ -1,0 +1,25 @@
+# SHA-256 ALLOWLIST -- known-good files that must NEVER be flagged as malware.
+#
+# One hex SHA-256 per line. Anything after '#' is a comment. A file whose hash
+# is listed here is fully trusted: the heuristic + YARA layers are skipped for
+# it (a real ClamAV or hash-blocklist detection would still apply, but those
+# don't fire on genuinely clean files).
+#
+# WHY: legit Windows software can resemble malware to behavior heuristics --
+# signed installers are packed/high-entropy, system tools import keylogger-like
+# APIs, etc. Allowlisting your trusted files removes those false positives.
+#
+# HOW TO POPULATE (pick what fits your environment):
+#   * NSRL (NIST National Software Reference Library) publishes SHA-256 hashes
+#     of known software: https://www.nist.gov/itl/ssd/software-quality-group/nsrl
+#     Import the hashes for the products you run.
+#   * Your corporate "golden image": hash every file on a clean reference PC and
+#     paste the hashes here (PowerShell: Get-FileHash -Algorithm SHA256).
+#   * Add a hash whenever the scanner false-positives on a file you trust.
+#
+# NOTE: the scanner ALSO trusts validly Authenticode-signed files and files
+# under trusted_paths (see config.yaml), so most Windows FPs are handled without
+# needing entries here. Use this list for unsigned in-house tools you trust.
+#
+# Example (placeholder, not a real hash):
+# 0000000000000000000000000000000000000000000000000000000000000000
