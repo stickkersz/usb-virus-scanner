@@ -33,27 +33,63 @@ that single file. A **USB Virus Scanner** icon appears on your desktop.
 
 Do this once on a Windows machine, then hand the result to everyone.
 
-**Prerequisites:** [Python 3.9+](https://www.python.org/downloads/) (tick "Add
-to PATH") and [Inno Setup 6](https://jrsoftware.org/isdl.php).
+**Step 1 — install the two prerequisites:**
+[Python 3.9+](https://www.python.org/downloads/) (tick "Add to PATH" during
+install) and [Inno Setup 6](https://jrsoftware.org/isdl.php).
+
+**Step 2 — verify the prerequisites (in PowerShell):**
+
+```powershell
+python --version        # expect Python 3.9 or newer
+iscc /?                 # Inno Setup; if "not recognized", install it and reopen PowerShell
+```
+
+**Step 3 — get the code:**
 
 ```powershell
 git clone https://github.com/stickkersz/usb-virus-scanner.git
 cd usb-virus-scanner
+# already cloned? just update:  git pull
+```
 
-# Fully offline installer (employees need no internet) — recommended:
+**Step 4 — build the installer:**
+
+```powershell
+# Fully offline installer (employees need no internet) — recommended.
+# The first run downloads ClamAV + the virus DB (~450 MB, one time).
 powershell -ExecutionPolicy Bypass -File build\build.ps1 -Offline
 
 # ...or a smaller installer that downloads ClamAV during each install:
 powershell -ExecutionPolicy Bypass -File build\build.ps1
 ```
 
-Result: **`Output\USBVirusScannerSetup.exe`** — the single file to deploy.
+The build prints `[0/3] … [3/3]` and ends with
+`DONE. Installer: Output\USBVirusScannerSetup.exe`.
 
-Deploy silently across the fleet (SCCM / Intune / GPO):
+**Result:** **`Output\USBVirusScannerSetup.exe`** — the single file to deploy.
+
+**Step 5 — smoke-test the build (harmless EICAR test file):**
+
+```powershell
+python tests\make_eicar.py C:\temp\eicartest
+"C:\Program Files\USBVirusScanner\usbscan.exe" scan C:\temp\eicartest
+```
+
+Expect `Verdict : THREATS FOUND` (exit code 1). That confirms the bundled
+ClamAV engine + database detect real signatures. Then plug in a USB stick to
+confirm auto-scan-on-insert fires.
+
+**Step 6 — deploy silently across the fleet** (SCCM / Intune / GPO):
 
 ```powershell
 USBVirusScannerSetup.exe /VERYSILENT /NORESTART
 ```
+
+<sub>Build troubleshooting: `iscc not recognized` → install Inno Setup 6 and
+reopen PowerShell. `fetch-vendor.ps1` download fails → pass a current version,
+e.g. `build\fetch-vendor.ps1 -Version 1.4.2`, or drop a ClamAV portable build
+into `vendor\ClamAV\` manually. PyInstaller "module not found" → add it to
+`hidden` in `build\usb_virus_scanner.spec`.</sub>
 
 ## 3. Install from source (dev / quick try)
 
