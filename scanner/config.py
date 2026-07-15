@@ -12,6 +12,7 @@ DEFAULTS = {
     "scanner": {
         "clamscan_path": r"C:\Program Files\ClamAV\clamscan.exe",
         "clamdscan_path": r"C:\Program Files\ClamAV\clamdscan.exe",
+        "database_path": r"C:\Program Files\ClamAV\database",
         "prefer_daemon": True,
         "max_file_size_mb": 200,
         "scan_archives": True,

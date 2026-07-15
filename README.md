@@ -174,9 +174,28 @@ What the employee gets when they run `USBVirusScannerSetup.exe`:
 
 Double-click → Next → Finish. Silent/GPO install: `USBVirusScannerSetup.exe /VERYSILENT /NORESTART`.
 
-To make the installer fully offline (no winget), drop a ClamAV build into
-`vendor\ClamAV\` before building — it gets bundled and installed to
-`C:\Program Files\ClamAV`.
+### Fully-offline installer (zero downloads on the employee PC)
+
+By default the installer fetches the ClamAV engine + virus database from the
+internet (winget + freshclam) during setup. To bundle **everything** into the
+one setup file so employees need **no internet at all**:
+
+```powershell
+# on the build machine, WITH internet, ONE time:
+powershell -ExecutionPolicy Bypass -File build\fetch-vendor.ps1   # downloads ClamAV + signatures into vendor\
+powershell -ExecutionPolicy Bypass -File build\build.ps1          # bundles them
+
+# or do both in one go:
+powershell -ExecutionPolicy Bypass -File build\build.ps1 -Offline
+```
+
+The build auto-detects `vendor\ClamAV\` at compile time: when present, ClamAV
+and the full signature DB are packed inside `USBVirusScannerSetup.exe` and every
+online step is removed. The employee just double-clicks — engine, database,
+scanner, GUI, shortcuts, auto-scan task, all installed from that one file,
+offline. Re-run `fetch-vendor.ps1` when you want to refresh the bundled
+signatures. (`vendor\` is git-ignored — ~450 MB of Windows binaries, not
+committed.)
 
 The app icon (`build\app.ico`, a security shield + USB mark) is embedded into
 both exes and used by the shortcuts. Regenerate/edit it with

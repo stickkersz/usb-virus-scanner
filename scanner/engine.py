@@ -38,6 +38,11 @@ class ClamAV:
         # clamdscan --multiscan uses all daemon threads in parallel — big win on
         # multi-core machines. Ignored by plain clamscan.
         self.multiscan = cfg.get("multiscan", True)
+        # Optional explicit virus-DB directory. Needed for a bundled/portable
+        # ClamAV so clamscan finds main.cvd/daily.cvd next to the exe. Passed
+        # only when the directory actually exists (ignored on dev/mac).
+        db = cfg.get("database_path")
+        self.database_path = db if db and os.path.isdir(db) else None
 
     @staticmethod
     def _resolve(configured: Optional[str], name: str) -> Optional[str]:
@@ -78,6 +83,9 @@ class ClamAV:
                     f"--max-scansize={self.max_mb}M"]
             cmd.append("--scan-archive=yes" if self.scan_archives
                        else "--scan-archive=no")
+            # Point a portable/bundled clamscan at its bundled signature DB.
+            if self.database_path:
+                cmd.append(f"--database={self.database_path}")
         if is_daemon:
             # --fdpass lets clamd (running as another user) read the files.
             cmd.append("--fdpass")

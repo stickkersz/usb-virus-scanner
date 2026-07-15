@@ -10,13 +10,34 @@
       3. If Inno Setup (iscc) is available, compile Output\USBVirusScannerSetup.exe.
 
     Result: Output\USBVirusScannerSetup.exe — the single file to deploy.
+
+    Pass -Offline to first download+bundle ClamAV so the installer needs NO
+    internet on the employee PC (runs build\fetch-vendor.ps1 for you).
 #>
+
+param(
+    [switch]$Offline = $false
+)
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $Root
 
 Write-Host "== Building USB Virus Scanner installer ==" -ForegroundColor Cyan
+
+# 0. Offline bundle: fetch ClamAV + virus DB into vendor\ if asked / missing.
+$clamStaged = Test-Path "vendor\ClamAV\clamscan.exe"
+if ($Offline -and -not $clamStaged) {
+    Write-Host "[0/3] Fetching ClamAV engine + signatures for offline bundle..." -ForegroundColor Yellow
+    & powershell -ExecutionPolicy Bypass -File "build\fetch-vendor.ps1"
+    $clamStaged = Test-Path "vendor\ClamAV\clamscan.exe"
+}
+if ($clamStaged) {
+    Write-Host "  ClamAV is bundled -> installer will be FULLY OFFLINE." -ForegroundColor Green
+} else {
+    Write-Host "  No bundled ClamAV -> installer will fetch it online (winget)." -ForegroundColor DarkYellow
+    Write-Host "  For a zero-download installer, re-run:  build\build.ps1 -Offline" -ForegroundColor DarkYellow
+}
 
 # 1. dependencies
 Write-Host "[1/3] Installing Python dependencies..." -ForegroundColor Yellow

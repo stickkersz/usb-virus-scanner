@@ -2,12 +2,21 @@
 ; Compile:  iscc build\installer.iss   (or open in Inno Setup Compiler)
 ; Prereq :  run build.ps1 first so dist\USBVirusScanner.exe and dist\usbscan.exe exist.
 ;
+; FULLY-OFFLINE build: run build\fetch-vendor.ps1 once to populate vendor\ClamAV\
+; (engine + virus database). This script detects that at COMPILE time and, when
+; present, bundles ClamAV and omits every online step — the resulting setup.exe
+; needs no internet at all. If vendor\ is empty, an optional online task fetches
+; ClamAV via winget instead.
+;
 ; Produces:  Output\USBVirusScannerSetup.exe  — one file to hand to employees.
 
 #define AppName    "USB Virus Scanner"
 #define AppVersion "1.0.0"
 #define AppExe     "USBVirusScanner.exe"
 #define Publisher  "Company IT Security"
+
+; Compile-time detection: is a ClamAV engine staged in vendor\ClamAV ?
+#define ClamBundled FileExists(SourcePath + "..\vendor\ClamAV\clamscan.exe")
 
 [Setup]
 AppName={#AppName}
@@ -25,6 +34,7 @@ PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#AppExe}
+SetupIconFile=app.ico
 
 [Languages]
 Name: "en"; MessagesFile: "compiler:Default.isl"
@@ -32,7 +42,10 @@ Name: "en"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Shortcuts:"
 Name: "autowatch";   Description: "Auto-scan every USB drive on insert (recommended)"; GroupDescription: "Protection:"
-Name: "installclam"; Description: "Install/refresh ClamAV engine + signatures (needs internet)"; GroupDescription: "Engine:"
+#if !ClamBundled
+; Only offered when the engine was NOT bundled (online build).
+Name: "installclam"; Description: "Download + install ClamAV engine + signatures (needs internet)"; GroupDescription: "Engine:"
+#endif
 
 [Files]
 ; Frozen executables (no Python needed on the employee PC).
@@ -42,9 +55,10 @@ Source: "..\dist\usbscan.exe";         DestDir: "{app}"; Flags: ignoreversion
 Source: "..\config.yaml";              DestDir: "{app}"; Flags: onlyifdoesntexist
 Source: "..\signatures\*";             DestDir: "{app}\signatures"; Flags: recursesubdirs createallsubdirs
 Source: "..\README.md";                DestDir: "{app}"; Flags: isreadme
-; Optional: ship a ClamAV build in vendor\ClamAV to make the installer fully
-; offline/standalone. If absent, the "installclam" task uses winget instead.
-Source: "..\vendor\ClamAV\*"; DestDir: "{commonpf}\ClamAV"; Flags: recursesubdirs createallsubdirs skipifsourcedoesntexist
+#if ClamBundled
+; Bundled ClamAV engine + virus database -> fully offline install.
+Source: "..\vendor\ClamAV\*"; DestDir: "{commonpf}\ClamAV"; Flags: recursesubdirs createallsubdirs
+#endif
 
 [Dirs]
 Name: "{commonappdata}\USBVirusScanner\Quarantine"
@@ -57,16 +71,17 @@ Name: "{group}\Uninstall {#AppName}";  Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}";      Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Run]
-; 1. Optional ClamAV install via winget (only if user ticked the task).
+#if !ClamBundled
+; ONLINE fallback (omitted entirely from an offline build).
 Filename: "winget"; Parameters: "install --id ClamAV.ClamAV -e --silent --accept-package-agreements --accept-source-agreements"; \
-  Flags: runhidden waituntilterminated; Tasks: installclam; StatusMsg: "Installing ClamAV engine..."
-; 2. Update signatures (best-effort; ignore failure if offline).
+  Flags: runhidden waituntilterminated; Tasks: installclam; StatusMsg: "Downloading ClamAV engine..."
 Filename: "{cmd}"; Parameters: "/c ""\""{commonpf}\ClamAV\freshclam.exe\"" || exit 0"""; \
   Flags: runhidden waituntilterminated; Tasks: installclam; StatusMsg: "Updating virus signatures..."
-; 3. Register the auto-scan watcher as a SYSTEM scheduled task at logon.
+#endif
+; Register the auto-scan watcher as a SYSTEM scheduled task at logon.
 Filename: "schtasks"; Parameters: "/Create /F /SC ONLOGON /RL HIGHEST /RU SYSTEM /TN ""USBVirusScannerWatcher"" /TR ""\""{app}\usbscan.exe\"" watch"""; \
   Flags: runhidden waituntilterminated; Tasks: autowatch; StatusMsg: "Enabling auto-scan on USB insert..."
-; 4. Offer to launch the GUI at the end.
+; Offer to launch the GUI at the end.
 Filename: "{app}\{#AppExe}"; Description: "Launch {#AppName} now"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]

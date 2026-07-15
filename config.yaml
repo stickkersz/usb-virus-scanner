@@ -6,6 +6,9 @@ scanner:
   # Default assumes the standard Windows installer location.
   clamscan_path: "C:\\Program Files\\ClamAV\\clamscan.exe"
   clamdscan_path: "C:\\Program Files\\ClamAV\\clamdscan.exe"
+  # Virus-signature database directory (main.cvd/daily.cvd). Used only if it
+  # exists — required for a bundled/portable ClamAV. Ignored otherwise.
+  database_path: "C:\\Program Files\\ClamAV\\database"
   # Prefer the resident daemon (clamd) when available — 10-100x faster on repeated scans.
   prefer_daemon: true
   # Max file size to scan (MB). Larger files are skipped (logged).

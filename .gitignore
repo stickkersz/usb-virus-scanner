@@ -9,6 +9,9 @@ quarantine/
 build/build/
 dist/
 Output/
+# Bundled ClamAV engine + virus DB — huge, Windows-only, license-bound.
+# Populate locally with build\fetch-vendor.ps1; never commit.
+vendor/
 *.spec.bak
 # frozen-build temp
 /build/*.toc
