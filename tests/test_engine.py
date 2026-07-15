@@ -67,3 +67,50 @@ def test_scan_single_file(config, fake_usb, tmp_path):
     res = eng.scan(str(fake_usb["dir"] / "dl.ps1"), quarantine=False)
     assert res.files_scanned == 1
     assert any(d.source == "yara" for d in res.detections)
+
+
+def test_double_flagged_file_quarantined_once(config, fake_usb, tmp_path, monkeypatch):
+    """A file hit by two layers must show one consistent quarantine location,
+    not a second 'quarantined_to=None' from a duplicate move attempt."""
+    from scanner.models import Detection, Severity
+    eng = _engine(config, tmp_path)
+    mal = str(fake_usb["dir"] / "mal.bin")
+    # force a ClamAV hit on the SAME file the hash layer also flags
+    monkeypatch.setattr(eng.clam, "clamscan", "/bin/true")  # make .available True
+    monkeypatch.setattr(eng.clam, "scan_filelist",
+                        lambda lp: ([Detection(mal, Severity.INFECTED,
+                                               "Test.Sig", "clamav")], []))
+    result = eng.scan(str(fake_usb["dir"]), quarantine=True)
+    dups = [d for d in result.infected if d.path == mal]
+    assert len(dups) >= 2                         # hash + clamav, same file
+    assert all(d.quarantined_to for d in dups)    # both show the same location
+
+
+def test_no_cache_when_clamav_errors(config, fake_usb, tmp_path, monkeypatch):
+    """If ClamAV is present but the signature pass errors, nothing is cached
+    (so a missed infection can't be skipped on the next scan)."""
+    eng = _engine(config, tmp_path)
+    monkeypatch.setattr(eng.clam, "clamscan", "/bin/true")  # make .available True
+    monkeypatch.setattr(eng.clam, "scan_filelist",
+                        lambda lp: ([], ["clamd connection failed"]))
+    eng.scan(str(fake_usb["dir"]), quarantine=False)
+    # clean file NOT cached -> rescan still processes it
+    res2 = eng.scan(str(fake_usb["dir"]), quarantine=False)
+    assert res2.files_skipped == 0
+
+
+def test_cache_path_normalized_match(config, fake_usb, tmp_path, monkeypatch):
+    """A ClamAV hit echoed with different case/slashes still marks the file
+    infected (not cached clean) thanks to normalized matching."""
+    from scanner.models import Detection, Severity
+    eng = _engine(config, tmp_path)
+    target = fake_usb["dir"] / "notes.txt"
+    weird = str(target).upper() if os.name == "nt" else str(target)
+    monkeypatch.setattr(eng.clam, "clamscan", "/bin/true")  # make .available True
+    monkeypatch.setattr(eng.clam, "scan_filelist",
+                        lambda lp: ([Detection(weird, Severity.INFECTED,
+                                               "Test.Sig", "clamav")], []))
+    res = eng.scan(str(fake_usb["dir"]), quarantine=False)
+    from scanner.engine import _norm
+    flagged = {_norm(d.path) for d in res.detections}
+    assert _norm(str(target)) in flagged

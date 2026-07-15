@@ -64,12 +64,18 @@ class Quarantine:
             return None
         src = entry["quarantine"]
         dest = to or entry["original"]
-        os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
-        if entry.get("neutralized"):
-            _xor_file(src, dest)  # XOR is symmetric — same op reverses it
-        else:
-            shutil.copy2(src, dest)
-        os.remove(src)
+        # The original location may be gone (e.g. the USB was unplugged), so a
+        # restore can fail on makedirs/copy. Fail softly -> callers get None and
+        # show a friendly message instead of an unhandled exception.
+        try:
+            os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
+            if entry.get("neutralized"):
+                _xor_file(src, dest)  # XOR is symmetric — same op reverses it
+            else:
+                shutil.copy2(src, dest)
+            os.remove(src)
+        except (OSError, PermissionError):
+            return None
         self._append_index({"id": qid, "status": "restored", "restored_to": dest,
                             "ts": time.time()})
         return dest

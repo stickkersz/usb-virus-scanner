@@ -25,6 +25,12 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _norm(path: str) -> str:
+    """Normalize a path for reliable matching between ClamAV's echoed paths and
+    our own list (case-fold + separators on Windows, no-op on POSIX)."""
+    return os.path.normcase(os.path.normpath(path))
+
+
 class ClamAV:
     """Thin wrapper over clamscan/clamdscan. Degrades gracefully if absent."""
 
@@ -171,6 +177,7 @@ class ScanEngine:
 
         # 2. ClamAV signature scan over just the candidate files (file-list).
         list_path = None
+        scan_complete = True
         try:
             list_path = self._write_file_list(files)
             if progress:
@@ -178,6 +185,12 @@ class ScanEngine:
             clam_hits, clam_errs = self.clam.scan_filelist(list_path)
             result.detections.extend(clam_hits)
             result.errors.extend(clam_errs)
+            # Only distrust the scan when ClamAV is present but errored (a
+            # partial/failed signature pass). ClamAV simply being absent is a
+            # supported mode -- the heuristic/hash/YARA layer is authoritative
+            # there -- so caching stays enabled.
+            if self.clam.available and clam_errs:
+                scan_complete = False
         finally:
             if list_path:
                 try:
@@ -199,24 +212,33 @@ class ScanEngine:
                     except Exception as exc:  # never let one file kill the scan
                         result.errors.append(f"{p}: {exc}")
 
-        # 4. Quarantine confirmed infections (fill sha256 if missing).
+        # 4. Quarantine confirmed infections. Dedup by path first so a file hit
+        #    by two layers isn't "quarantined" twice (2nd attempt would find it
+        #    already moved and record a misleading quarantined_to=None).
         if quarantine:
+            done: dict[str, Optional[str]] = {}
             for det in result.infected:
-                if not det.sha256:
-                    det.sha256 = sha256_of(det.path)
-                q = self.quar.store(det.path, det.threat, det.sha256)
-                det.quarantined_to = q
+                key = _norm(det.path)
+                if key not in done:
+                    if not det.sha256:
+                        det.sha256 = sha256_of(det.path)
+                    done[key] = self.quar.store(det.path, det.threat, det.sha256)
+                det.quarantined_to = done[key]
 
-        # 5. Cache the files that came back clean so next scan skips them.
-        flagged = {d.path for d in result.detections}
-        for path, size in files:
-            if path not in flagged:
-                try:
-                    st = os.stat(path)
-                    self.cache.mark_clean(path, st.st_size, st.st_mtime_ns)
-                except OSError:
-                    pass
-        self.cache.save()
+        # 5. Cache files that came back clean so next scan skips them. Match
+        #    detections by normalized path (ClamAV may echo a path in different
+        #    case/slash form than we listed), and never cache when the signature
+        #    scan was incomplete -- both would let malware be skipped later.
+        flagged = {_norm(d.path) for d in result.detections}
+        if scan_complete:
+            for path, size in files:
+                if _norm(path) not in flagged:
+                    try:
+                        st = os.stat(path)
+                        self.cache.mark_clean(path, st.st_size, st.st_mtime_ns)
+                    except OSError:
+                        pass
+            self.cache.save()
 
         result.finished = _now()
         return result
@@ -258,6 +280,10 @@ class ScanEngine:
 
     @staticmethod
     def _write_file_list(files: List[tuple[str, int]]) -> str:
+        # UTF-8 is correct for ClamAV 1.x (the version we bundle) on every
+        # platform. ASCII paths work with any build; any file ClamAV can't
+        # reopen is still fully covered by the hash/YARA layer, which uses
+        # Python's native path handling.
         fd, path = tempfile.mkstemp(prefix="usbscan_list_", suffix=".txt")
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             for p, _size in files:

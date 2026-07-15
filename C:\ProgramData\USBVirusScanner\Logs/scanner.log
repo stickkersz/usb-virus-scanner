@@ -1,0 +1,3 @@
+2026-07-15 14:26:07,266 INFO Scan /tmp/gb/usb: 1 files, 1 infected, 1 suspicious, 0 skipped
+2026-07-15 14:26:07,266 INFO SUSPICIOUS [heuristic] /tmp/gb/usb/autorun.inf (autorun.inf present (USB autostart vector))
+2026-07-15 14:26:07,266 WARNING INFECTED [yara] /tmp/gb/usb/autorun.inf (YARA:USB_Autorun_Launcher)

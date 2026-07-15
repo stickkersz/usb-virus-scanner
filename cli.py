@@ -127,7 +127,16 @@ def cmd_update(args) -> int:
         print("freshclam not found. Install ClamAV first.")
         return 1
     print("Updating ClamAV signatures...")
-    return subprocess.call([fresh])
+    cmd = [fresh]
+    # freshclam needs a config file; a winget/portable ClamAV may ship only a
+    # .sample. Point it at a real freshclam.conf if we can find one next to the
+    # binary so the update doesn't fail with "Can't parse the config file".
+    clam_dir = os.path.dirname(fresh) if os.path.isabs(fresh) else \
+        r"C:\Program Files\ClamAV"
+    conf = os.path.join(clam_dir, "freshclam.conf")
+    if os.path.isfile(conf):
+        cmd.append(f"--config-file={conf}")
+    return subprocess.call(cmd)
 
 
 def cmd_version(args) -> int:

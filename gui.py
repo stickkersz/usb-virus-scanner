@@ -179,11 +179,16 @@ class ScannerGUI(tk.Tk):
                              values=(d.severity.value, d.threat, d.source, d.path),
                              tags=(d.severity.value,))
         clean = result.clean
+        report_only = self.report_only.get()
+        if clean:
+            text = f"✔  CLEAN — {result.files_scanned} files scanned, no threats."
+        else:
+            action = ("NOT moved (report-only)" if report_only
+                      else "infected files quarantined")
+            text = (f"⚠  {len(result.infected)} infected, "
+                    f"{len(result.suspicious)} suspicious — {action}.")
         self.banner.config(
-            text=(f"✔  CLEAN — {result.files_scanned} files scanned, no threats."
-                  if clean else
-                  f"⚠  {len(result.infected)} infected, {len(result.suspicious)} "
-                  f"suspicious — infected files quarantined."),
+            text=text,
             bg=SEV_COLOR["clean"] if clean else SEV_COLOR["infected"])
         self.banner.pack(fill="x", padx=8, before=self.tree)
         self.status_var.set(f"Done. Report: {report}")
