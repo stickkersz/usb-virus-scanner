@@ -24,11 +24,19 @@ scanner:
   use_cache: true
   # clamdscan --multiscan: use all daemon threads in parallel (multi-core win).
   multiscan: true
+  # Detect adware / potentially-unwanted programs (PUP/PUA) via ClamAV.
+  detect_pua: true
+  # Enable ClamAV's own heuristics (packed/broken PE, macros) for zero-days.
+  heuristic_alerts: true
 
 heuristics:
   enabled: true
   # Flag autorun.inf on removable media — classic USB-worm propagation vector.
   flag_autorun_inf: true
+  # Ransomware early-warning: encrypted-file extensions + ransom-note filenames.
+  flag_ransomware: true
+  # Flag packed/high-entropy executables (obfuscated / novel trojan variants).
+  flag_packed_exe: true
   # Extensions treated as high-risk on removable media.
   suspicious_extensions:
     - ".exe"

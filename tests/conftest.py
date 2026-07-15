@@ -43,9 +43,11 @@ def signatures(tmp_path, fake_usb):
     (sig / "hash_blocklist.txt").write_text(
         f"# test\n{fake_usb['mal_sha256']}  # mal.bin\n")
     # copy the real project YARA rules so we test the shipped ruleset
-    real_yara = os.path.join(ROOT, "signatures", "yara", "usb_threats.yar")
-    with open(real_yara) as fh:
-        (sig / "yara" / "usb_threats.yar").write_text(fh.read())
+    real_yara_dir = os.path.join(ROOT, "signatures", "yara")
+    for name in os.listdir(real_yara_dir):
+        if name.endswith((".yar", ".yara")):
+            with open(os.path.join(real_yara_dir, name)) as fh:
+                (sig / "yara" / name).write_text(fh.read())
     return sig
 
 

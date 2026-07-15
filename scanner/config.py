@@ -19,10 +19,14 @@ DEFAULTS = {
         "workers": "auto",
         "use_cache": True,
         "multiscan": True,
+        "detect_pua": True,
+        "heuristic_alerts": True,
     },
     "heuristics": {
         "enabled": True,
         "flag_autorun_inf": True,
+        "flag_ransomware": True,
+        "flag_packed_exe": True,
         "suspicious_extensions": [
             ".exe", ".scr", ".bat", ".cmd", ".vbs", ".vbe", ".js", ".jse",
             ".ps1", ".lnk", ".pif", ".com", ".hta", ".jar",

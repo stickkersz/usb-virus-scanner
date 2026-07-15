@@ -12,6 +12,7 @@ def _engine(signatures, **over):
         "hash_blocklist": str(signatures / "hash_blocklist.txt"),
         "yara_rules_dir": str(signatures / "yara"),
         "flag_autorun_inf": True, "flag_double_extension": True,
+        "flag_ransomware": True, "flag_packed_exe": True,
         "deep_scan_all": False, "deep_scan_max_mb": 50,
     }
     cfg.update(over)
@@ -87,3 +88,45 @@ def test_disabled_engine_returns_empty(signatures, fake_usb):
     e = _engine(signatures, enabled=False)
     mal = fake_usb["dir"] / "mal.bin"
     assert e.scan_file(str(mal), mal.stat().st_size) == []
+
+
+# ---- new threat-category coverage --------------------------------------
+def test_ransomware_encrypted_extension(signatures, tmp_path):
+    e = _engine(signatures)
+    f = tmp_path / "budget.xlsx.locked"
+    f.write_bytes(b"\x00\x01")
+    dets = e.scan_file(str(f), f.stat().st_size)
+    assert any("ransomware-encrypted" in d.threat for d in dets)
+
+
+def test_ransom_note_filename(signatures, tmp_path):
+    e = _engine(signatures)
+    f = tmp_path / "HOW_TO_DECRYPT_readme.txt"
+    f.write_text("pay to recover your files")
+    dets = e.scan_file(str(f), f.stat().st_size)
+    assert any("ransom note" in d.threat for d in dets)
+
+
+def test_packed_executable_high_entropy(signatures, tmp_path):
+    """A PE (MZ) file full of random bytes = packed/obfuscated -> suspicious."""
+    e = _engine(signatures)
+    f = tmp_path / "packed.exe"
+    f.write_bytes(b"MZ" + os.urandom(4096))
+    dets = e.scan_file(str(f), f.stat().st_size)
+    assert any("packed" in d.threat for d in dets)
+
+
+def test_low_entropy_exe_not_flagged_packed(signatures, tmp_path):
+    e = _engine(signatures)
+    f = tmp_path / "normal.exe"
+    f.write_bytes(b"MZ" + b"\x00" * 4096)          # low entropy
+    dets = e.scan_file(str(f), f.stat().st_size)
+    assert not any("packed" in d.threat for d in dets)
+
+
+def test_ransomware_yara_note(signatures, tmp_path):
+    e = _engine(signatures)
+    f = tmp_path / "help.txt"
+    f.write_text("Your files have been encrypted. Pay bitcoin. onion evil@x")
+    dets = e.scan_file(str(f), f.stat().st_size)
+    assert any(d.source == "yara" and "Ransomware" in d.threat for d in dets)

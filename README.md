@@ -154,14 +154,36 @@ it, it does nothing.
 
 # How it works
 
-Four detection layers, each catching what the others miss:
+Five detection layers, each catching what the others miss:
 
 | Layer | What it catches | Engine |
 |-------|-----------------|--------|
 | **ClamAV signatures** | Millions of known viruses/malware, inside archives too | `clamscan` / `clamdscan` |
+| **ClamAV PUA + heuristics** | Adware / potentially-unwanted programs, packed/broken PEs | `--detect-pua`, `--heuristic-alerts` |
 | **Company hash blocklist** | Known-bad files from your own IR / threat intel | SHA-256 match |
-| **YARA rules** | Behavior patterns, zero-days ClamAV misses | `yara-python` |
-| **USB heuristics** | `autorun.inf` autostart, double extensions (`invoice.pdf.exe`), risky script droppers | built-in |
+| **YARA rules** | Ransomware, spyware/keyloggers, worms, trojan downloaders, macro droppers, packers — by *technique*, so novel variants match | `yara-python` |
+| **USB + behavior heuristics** | `autorun.inf`, double extensions, ransom notes, encrypted-file extensions, packed/high-entropy executables | built-in |
+
+## Threat coverage
+
+Detection is designed around the real threat landscape — ~1.56B known samples
+plus ~450k new variants/day. Known samples are caught by signatures; novel ones
+by technique/behavior:
+
+| Threat category | How it's detected here |
+|-----------------|------------------------|
+| **Trojans** | ClamAV signatures; YARA `Trojan_Downloader_Generic` (download+exec APIs); packed-executable entropy check |
+| **Ransomware** | YARA `Ransomware_Note_Text` / `Ransomware_Crypto_API_Combo` (crypto + shadow-copy deletion); heuristic ransom-note + `.locked/.crypt/...` extension flags |
+| **Spyware / keyloggers / infostealers** | YARA `Spyware_Keylogger_Indicators`, `Infostealer_Browser_Credentials`; ClamAV signatures |
+| **Viruses** | ClamAV signatures (file-infector DB); hash blocklist |
+| **Worms** | YARA `Worm_Network_Selfspread`; `autorun.inf` heuristic (removable-media spread) |
+| **Adware / PUP** | ClamAV `--detect-pua`; YARA `Adware_PUP_Bundler` |
+
+**Zero-days (the 450k/day):** the YARA rules match on *techniques* (crypto+VSS
+deletion, download+exec, keylogging APIs, packer markers) and the entropy check
+flags obfuscated binaries — so brand-new variants with no signature still get
+caught. **Keep ClamAV fresh** (`usbscan update`, or the scheduled `freshclam`
+the installer sets up) so signature coverage tracks the daily flood.
 
 Two front-ends (`gui.py`, `cli.py`) drive one shared **`ScanEngine`**. A scan is
 a pipeline:

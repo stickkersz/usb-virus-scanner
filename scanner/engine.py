@@ -44,6 +44,11 @@ class ClamAV:
         # clamdscan --multiscan uses all daemon threads in parallel — big win on
         # multi-core machines. Ignored by plain clamscan.
         self.multiscan = cfg.get("multiscan", True)
+        # PUA = Potentially Unwanted Applications (adware, bundleware, PUPs).
+        # Part of the "1.56B samples" are PUPs; ClamAV flags them only when asked.
+        self.detect_pua = cfg.get("detect_pua", True)
+        # ClamAV's own heuristics (broken-PE, packed, macro, phishing structure).
+        self.heuristic_alerts = cfg.get("heuristic_alerts", True)
         # Optional explicit virus-DB directory. Needed for a bundled/portable
         # ClamAV so clamscan finds main.cvd/daily.cvd next to the exe. Passed
         # only when the directory actually exists (ignored on dev/mac).
@@ -84,11 +89,19 @@ class ClamAV:
         binary, is_daemon = chosen
 
         cmd = [binary, "--no-summary", "--infected", f"--file-list={list_path}"]
+        # Detect adware / potentially-unwanted programs (works for clamscan and
+        # clamdscan). Directly covers the "adware / PUP" threat category.
+        if self.detect_pua:
+            cmd.append("--detect-pua=yes")
         if not is_daemon:
             cmd += [f"--max-filesize={self.max_mb}M",
                     f"--max-scansize={self.max_mb}M"]
             cmd.append("--scan-archive=yes" if self.scan_archives
                        else "--scan-archive=no")
+            # Turn on ClamAV's own heuristics (packed/broken PE, macros, etc.)
+            # for better zero-day / novel-variant coverage.
+            if self.heuristic_alerts:
+                cmd += ["--heuristic-alerts=yes", "--alert-broken=yes"]
             # Point a portable/bundled clamscan at its bundled signature DB.
             if self.database_path:
                 cmd.append(f"--database={self.database_path}")

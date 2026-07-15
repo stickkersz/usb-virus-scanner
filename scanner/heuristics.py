@@ -8,6 +8,7 @@ optional YARA rules — useful for zero-days ClamAV has no signature for yet.
 from __future__ import annotations
 
 import hashlib
+import math
 import os
 from typing import List, Optional, Set
 
@@ -27,6 +28,51 @@ DEFAULT_SUSPICIOUS_EXT = frozenset({
     ".exe", ".scr", ".bat", ".cmd", ".vbs", ".vbe", ".js", ".jse",
     ".ps1", ".lnk", ".pif", ".com", ".hta", ".jar",
 })
+
+# File extensions overwhelmingly used by ransomware to mark encrypted files.
+RANSOM_EXTENSIONS = frozenset({
+    ".locked", ".encrypted", ".crypt", ".crypted", ".enc", ".locky", ".cerber",
+    ".wannacry", ".wncry", ".wcry", ".zepto", ".cryptolocker", ".cryptowall",
+    ".ryuk", ".conti", ".lockbit", ".makop", ".phobos", ".djvu", ".stop",
+    ".basta", ".akira", ".royal", ".hive", ".medusa", ".abcd", ".pay",
+})
+
+# Substrings/full names of typical ransom-note files dropped on the drive.
+RANSOM_NOTE_SUBSTRINGS = (
+    "readme", "decrypt", "how_to", "how to", "recover", "restore",
+    "unlock", "your files", "ransom", "@", "_help_", "important",
+)
+RANSOM_NOTE_KEYWORDS = ("decrypt", "recover", "restore", "unlock", "ransom")
+
+# High Shannon entropy in an executable strongly implies packing/obfuscation,
+# the norm for fresh trojan/malware variants that evade signatures.
+PACKED_ENTROPY_THRESHOLD = 7.2
+_ENTROPY_SAMPLE_BYTES = 256 * 1024
+
+
+def shannon_entropy(data: bytes) -> float:
+    """Bits-per-byte entropy (0-8). ~8 = random/encrypted/packed."""
+    if not data:
+        return 0.0
+    counts = [0] * 256
+    for b in data:
+        counts[b] += 1
+    n = len(data)
+    ent = 0.0
+    for c in counts:
+        if c:
+            p = c / n
+            ent -= p * math.log2(p)
+    return ent
+
+
+def head_sample(path: str, n: int = _ENTROPY_SAMPLE_BYTES) -> Optional[bytes]:
+    """Read up to n leading bytes once (for magic + entropy checks)."""
+    try:
+        with open(path, "rb") as fh:
+            return fh.read(n)
+    except (OSError, PermissionError):
+        return None
 
 
 def sha256_of(path: str, chunk: int = 1 << 20) -> Optional[str]:
@@ -53,6 +99,9 @@ class HeuristicEngine:
         )
         self.flag_autorun = cfg.get("flag_autorun_inf", True)
         self.flag_double = cfg.get("flag_double_extension", True)
+        # Behavior-based layers for zero-day / novel malware categories.
+        self.flag_ransomware = cfg.get("flag_ransomware", True)
+        self.flag_packed_exe = cfg.get("flag_packed_exe", True)
         # Fast-mode gating: only read+hash+YARA files that are either a risky
         # type or small. Skips the expensive content read on big media/data
         # files that are extremely unlikely to be executable malware.
@@ -131,10 +180,23 @@ class HeuristicEngine:
                                      f"double extension '{inner_ext}{ext}'",
                                      "heuristic"))
 
-        # hash blocklist + YARA need the bytes — the expensive part. Skip on big
+        # ransomware indicators (name-based, no I/O): encrypted-file extensions
+        # and dropped ransom notes. Early warning that a drive was hit.
+        if self.flag_ransomware:
+            if ext in RANSOM_EXTENSIONS:
+                out.append(Detection(path, Severity.SUSPICIOUS,
+                                     f"ransomware-encrypted file extension '{ext}'",
+                                     "heuristic"))
+            elif ext in (".txt", ".html", ".hta") and any(
+                    k in lower for k in RANSOM_NOTE_KEYWORDS) and any(
+                    s in lower for s in RANSOM_NOTE_SUBSTRINGS):
+                out.append(Detection(path, Severity.SUSPICIOUS,
+                                     "possible ransom note", "heuristic"))
+
+        # Deep layers need the file bytes -- the expensive part. Skip on big
         # non-risky files so slow disks aren't hammered reading movies/backups.
-        if not ((self._hashes or self._yara_rules)
-                and self._needs_deep_scan(ext, size)):
+        wants_deep = self._hashes or self._yara_rules or self.flag_packed_exe
+        if not (wants_deep and self._needs_deep_scan(ext, size)):
             return out
 
         # compute hash once, shared by blocklist match + YARA metadata
@@ -153,5 +215,15 @@ class HeuristicEngine:
                                          f"YARA:{m.rule}", "yara", sha256=digest))
             except Exception:
                 pass
+
+        # Packed/obfuscated executable: high entropy in a PE (MZ) file. Catches
+        # fresh trojan variants that no signature covers yet.
+        if self.flag_packed_exe:
+            head = head_sample(path)
+            if head and head[:2] == b"MZ" and \
+                    shannon_entropy(head) >= PACKED_ENTROPY_THRESHOLD:
+                out.append(Detection(path, Severity.SUSPICIOUS,
+                                     "packed/high-entropy executable "
+                                     "(possible obfuscated malware)", "heuristic"))
 
         return out

@@ -81,12 +81,16 @@ Filename: "{cmd}"; Parameters: "/c ""\""{commonpf}\ClamAV\freshclam.exe\"" || ex
 ; Register the auto-scan watcher as a SYSTEM scheduled task at logon.
 Filename: "schtasks"; Parameters: "/Create /F /SC ONLOGON /RL HIGHEST /RU SYSTEM /TN ""USBVirusScannerWatcher"" /TR ""\""{app}\usbscan.exe\"" watch"""; \
   Flags: runhidden waituntilterminated; Tasks: autowatch; StatusMsg: "Enabling auto-scan on USB insert..."
+; Refresh virus signatures daily so detection tracks new variants.
+Filename: "schtasks"; Parameters: "/Create /F /SC DAILY /ST 12:00 /RL HIGHEST /RU SYSTEM /TN ""USBVirusScannerUpdate"" /TR ""\""{app}\usbscan.exe\"" update"""; \
+  Flags: runhidden waituntilterminated; StatusMsg: "Scheduling daily signature updates..."
 ; Offer to launch the GUI at the end.
 Filename: "{app}\{#AppExe}"; Description: "Launch {#AppName} now"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
-; Remove the scheduled task on uninstall.
+; Remove the scheduled tasks on uninstall.
 Filename: "schtasks"; Parameters: "/Delete /F /TN ""USBVirusScannerWatcher"""; Flags: runhidden; RunOnceId: "DelWatchTask"
+Filename: "schtasks"; Parameters: "/Delete /F /TN ""USBVirusScannerUpdate"""; Flags: runhidden; RunOnceId: "DelUpdateTask"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{commonappdata}\USBVirusScanner\Logs"
