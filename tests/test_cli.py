@@ -59,3 +59,29 @@ def test_scan_infected_exit_one(tmp_path, signatures, fake_usb):
 def test_bad_command_errors():
     r = _run(["nonsense"])
     assert r.returncode != 0
+
+
+def test_quarantine_purge_empty(tmp_path, signatures):
+    cfg = _write_cfg(tmp_path, signatures)
+    r = _run(["-c", cfg, "quarantine", "--purge", "--yes"])
+    assert r.returncode == 0
+    assert "empty" in r.stdout.lower()
+
+
+def test_quarantine_scan_then_purge(tmp_path, signatures, fake_usb):
+    cfg = _write_cfg(tmp_path, signatures)
+    # scan WITH quarantine (default) so infected files land in quarantine
+    _run(["-c", cfg, "scan", str(fake_usb["dir"])])
+    listed = _run(["-c", cfg, "quarantine"])
+    assert "ID" in listed.stdout                    # something quarantined
+    purged = _run(["-c", cfg, "quarantine", "--purge", "--yes"])
+    assert "Permanently deleted" in purged.stdout
+    after = _run(["-c", cfg, "quarantine"])
+    assert "empty" in after.stdout.lower()          # gone forever
+
+
+def test_quarantine_delete_unknown_id(tmp_path, signatures):
+    cfg = _write_cfg(tmp_path, signatures)
+    r = _run(["-c", cfg, "quarantine", "--delete", "does-not-exist"])
+    assert r.returncode == 1
+    assert "failed" in r.stdout.lower()

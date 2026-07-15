@@ -62,6 +62,33 @@ def test_reporter_writes_log_and_report(tmp_path):
     assert "THREATS FOUND" in open(rep).read()
 
 
+def test_reporter_jsonl_schema(tmp_path):
+    """events.jsonl must be one valid JSON object per scan with a stable schema
+    (so a SIEM can parse it)."""
+    import json
+    log = reporter.setup_logging({"path": str(tmp_path / "logs"), "jsonl": True})
+    r = ScanResult(target="E:\\", started="s", finished="f",
+                   files_scanned=9, files_skipped=2)
+    r.detections = [Detection("E:\\x.exe", Severity.INFECTED, "Win.Test", "clamav",
+                              sha256="ab", quarantined_to="q\\1")]
+    reporter.log_result(log, r)
+    lines = open(tmp_path / "logs" / "events.jsonl", encoding="utf-8").read().splitlines()
+    rec = json.loads(lines[-1])
+    for key in ("target", "started", "finished", "files_scanned",
+                "files_skipped", "detections", "errors"):
+        assert key in rec
+    d = rec["detections"][0]
+    for key in ("path", "severity", "threat", "source", "sha256", "quarantined_to"):
+        assert key in d
+    assert d["severity"] == "infected"
+
+
+def test_reporter_clean_report_says_clean(tmp_path):
+    r = ScanResult(target="t", started="s", finished="f", files_scanned=5)
+    rep = reporter.write_report({"path": str(tmp_path / "rep")}, r)
+    assert "CLEAN" in open(rep).read()
+
+
 # ---- watcher ------------------------------------------------------------
 def test_list_removable_returns_list():
     assert isinstance(watcher.list_removable(), list)
