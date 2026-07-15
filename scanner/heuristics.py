@@ -21,6 +21,14 @@ except Exception:  # pragma: no cover - optional dependency
     _HAS_YARA = False
 
 
+# Built-in fallback so double-extension detection and the risky-file deep-scan
+# gate still work even if a partial config omits `suspicious_extensions`.
+DEFAULT_SUSPICIOUS_EXT = frozenset({
+    ".exe", ".scr", ".bat", ".cmd", ".vbs", ".vbe", ".js", ".jse",
+    ".ps1", ".lnk", ".pif", ".com", ".hta", ".jar",
+})
+
+
 def sha256_of(path: str, chunk: int = 1 << 20) -> Optional[str]:
     """Streamed SHA-256 so multi-GB files don't blow up memory."""
     try:
@@ -38,9 +46,11 @@ class HeuristicEngine:
         self.cfg = cfg
         self.base_dir = base_dir
         self.enabled = cfg.get("enabled", True)
-        self.suspicious_ext: Set[str] = {
-            e.lower() for e in cfg.get("suspicious_extensions", [])
-        }
+        configured_ext = cfg.get("suspicious_extensions")
+        self.suspicious_ext: Set[str] = (
+            {e.lower() for e in configured_ext} if configured_ext
+            else set(DEFAULT_SUSPICIOUS_EXT)
+        )
         self.flag_autorun = cfg.get("flag_autorun_inf", True)
         self.flag_double = cfg.get("flag_double_extension", True)
         # Fast-mode gating: only read+hash+YARA files that are either a risky

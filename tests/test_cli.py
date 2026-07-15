@@ -1,0 +1,61 @@
+"""CLI smoke tests via subprocess — verifies commands + exit codes."""
+
+import os
+import subprocess
+import sys
+
+import yaml
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _run(args, **kw):
+    return subprocess.run([sys.executable, os.path.join(ROOT, "cli.py"), *args],
+                          capture_output=True, text=True, cwd=ROOT, **kw)
+
+
+def _write_cfg(tmp_path, signatures):
+    cfg = {
+        "scanner": {"prefer_daemon": False},
+        "heuristics": {"enabled": True,
+                       "hash_blocklist": str(signatures / "hash_blocklist.txt"),
+                       "yara_rules_dir": str(signatures / "yara")},
+        "quarantine": {"path": str(tmp_path / "q")},
+        "logging": {"path": str(tmp_path / "logs")},
+        "reporting": {"path": str(tmp_path / "rep")},
+    }
+    p = tmp_path / "c.yaml"
+    p.write_text(yaml.safe_dump(cfg))
+    return str(p)
+
+
+def test_version():
+    r = _run(["version"])
+    assert r.returncode == 0 and "USB Virus Scanner" in r.stdout
+
+
+def test_drives_runs():
+    r = _run(["drives"])
+    assert r.returncode == 0
+
+
+def test_scan_clean_exit_zero(tmp_path, signatures):
+    cfg = _write_cfg(tmp_path, signatures)
+    clean = tmp_path / "clean"
+    clean.mkdir()
+    (clean / "hello.txt").write_text("hi")
+    r = _run(["-c", cfg, "scan", str(clean), "--no-quarantine"])
+    assert r.returncode == 0
+    assert "CLEAN" in r.stdout
+
+
+def test_scan_infected_exit_one(tmp_path, signatures, fake_usb):
+    cfg = _write_cfg(tmp_path, signatures)
+    r = _run(["-c", cfg, "scan", str(fake_usb["dir"]), "--no-quarantine"])
+    assert r.returncode == 1                       # threats -> exit 1
+    assert "THREATS FOUND" in r.stdout
+
+
+def test_bad_command_errors():
+    r = _run(["nonsense"])
+    assert r.returncode != 0

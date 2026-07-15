@@ -1,0 +1,5 @@
+# Development / test dependencies (not needed to run the scanner).
+-r requirements.txt
+pytest>=7.0
+pyinstaller>=6.0    # build the frozen exe
+Pillow>=10.0        # regenerate build/app.ico

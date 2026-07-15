@@ -229,6 +229,17 @@ python cli.py scan C:\temp\eicartest            # must report a detection
 EICAR is the industry-standard harmless AV test string — every scanner flags
 it, it does nothing.
 
+### Automated test suite
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest -q          # 45 tests: cache, quarantine, heuristics, engine, CLI, units
+```
+
+Covers detection correctness, quarantine round-trip (byte-exact restore), cache
+invalidation, deep-scan gating, CLI exit codes, and config merging. No ClamAV
+needed — the heuristic/hash/YARA layers are exercised directly.
+
 ## Speed on slow laptops
 
 Optimized so old/slow company machines scan fast:

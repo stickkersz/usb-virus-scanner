@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
+.pytest_cache/
 .DS_Store
 .claude/
 # runtime data dirs if run from source
