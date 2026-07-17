@@ -382,13 +382,13 @@ class ScanEngine:
     def _refresh_feeds(self) -> None:
         """Pick up feed files the daily sync task rewrote.
 
-        Long-lived processes (`usbscan monitor` as a logon task, an open GUI)
+        Long-lived processes (`arvscan monitor` as a logon task, an open GUI)
         would otherwise keep the intel snapshot taken when they started, so
         "synced daily" would really mean "as of last reboot". Cheap: a few
         stats, and a re-read only when something actually changed.
         """
         self.web.reload_if_changed()
-        # Feed-synced hash blocklists (usbscan feeds, type: sha256) join the
+        # Feed-synced hash blocklists (arvscan feeds, type: sha256) join the
         # same hash layer as the company blocklist — one detection path.
         sig = feed_signature(self.web.feeds_dir, ".sha256.txt")
         if sig == self._hash_feed_sig:
@@ -491,7 +491,7 @@ class ScanEngine:
         # platform. ASCII paths work with any build; any file ClamAV can't
         # reopen is still fully covered by the hash/YARA layer, which uses
         # Python's native path handling.
-        fd, path = tempfile.mkstemp(prefix="usbscan_list_", suffix=".txt")
+        fd, path = tempfile.mkstemp(prefix="arvscan_list_", suffix=".txt")
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             for p, *_rest in files:
                 fh.write(p + "\n")

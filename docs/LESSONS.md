@@ -4,7 +4,7 @@ Appended by the `failure-coach` agent (and humans). One entry per root cause;
 extend an entry rather than duplicating its rule. Newest at the bottom.
 
 ## 2026-07-15 — Excluded scan root reported a false "0 files, CLEAN"
-- **Failure mode:** `usbscan scan D:\VMs` while `D:\VMs` was in `exclusions`
+- **Failure mode:** `arvscan scan D:\VMs` while `D:\VMs` was in `exclusions`
   walked zero files and printed CLEAN — a false all-clear.
 - **Root cause:** exclusion matching applied to the walk root itself, not just
   to entries discovered under it; explicit user intent lost to config.

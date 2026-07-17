@@ -14,7 +14,7 @@ from .models import ScanResult
 def setup_logging(cfg: dict) -> logging.Logger:
     log_dir = cfg.get("path", "logs")
     os.makedirs(log_dir, exist_ok=True)
-    logger = logging.getLogger("usbscanner")
+    logger = logging.getLogger("arvscanner")
     logger.setLevel(getattr(logging, cfg.get("level", "INFO").upper(), logging.INFO))
     logger.handlers.clear()
 

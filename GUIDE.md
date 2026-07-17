@@ -2,7 +2,7 @@
 
 > *Formerly "USB Virus Scanner". It now protects the whole computer — USB
 > drives, hard disks, downloads, and files in real time. The setup file and
-> install folders keep the old `USBVirusScanner` names on purpose, so upgrades
+> install folders keep the old `AllRounderVirusScanner` names on purpose, so upgrades
 > keep your settings and quarantine.*
 
 A friendly, step-by-step guide. No prior experience needed. Two parts:
@@ -20,9 +20,9 @@ A friendly, step-by-step guide. No prior experience needed. Two parts:
 
 ### A. Employees — the easy way (one file)
 
-You only need the single file **`USBVirusScannerSetup.exe`** (your IT team gives you this).
+You only need the single file **`AllRounderVirusScannerSetup.exe`** (your IT team gives you this).
 
-1. **Double-click** `USBVirusScannerSetup.exe`.
+1. **Double-click** `AllRounderVirusScannerSetup.exe`.
 2. If Windows shows a blue "Windows protected your PC" box, click **More info → Run anyway** (this is normal for new in-house apps).
 3. Click **Yes** when asked for admin permission.
 4. On the options screen, tick the boxes you want (defaults are fine):
@@ -44,8 +44,8 @@ Works on Windows, macOS, and Linux. Needs **Python 3.9+**.
 1. Install Python from [python.org](https://www.python.org/downloads/) (on Windows, tick **"Add Python to PATH"** during install).
 2. Open a terminal (Windows: **PowerShell**) and run:
    ```powershell
-   git clone https://github.com/stickkersz/usb-virus-scanner.git
-   cd usb-virus-scanner
+   git clone https://github.com/stickkersz/all-rounder-virus-scanner.git
+   cd all-rounder-virus-scanner
    python -m pip install -r requirements.txt
    ```
 3. Try it:
@@ -60,7 +60,7 @@ Works on Windows, macOS, and Linux. Needs **Python 3.9+**.
 
 ### C. IT — build the one-click setup file
 
-Do this **once** on a Windows machine to produce the `USBVirusScannerSetup.exe` you hand to employees.
+Do this **once** on a Windows machine to produce the `AllRounderVirusScannerSetup.exe` you hand to employees.
 
 **You need:**
 - **Python 3.9+** — [python.org](https://www.python.org/downloads/) (tick "Add to PATH").
@@ -70,8 +70,8 @@ Do this **once** on a Windows machine to produce the `USBVirusScannerSetup.exe` 
 
 1. Get the code:
    ```powershell
-   git clone https://github.com/stickkersz/usb-virus-scanner.git
-   cd usb-virus-scanner
+   git clone https://github.com/stickkersz/all-rounder-virus-scanner.git
+   cd all-rounder-virus-scanner
    ```
 2. Build the installer:
 
@@ -88,13 +88,13 @@ Do this **once** on a Windows machine to produce the `USBVirusScannerSetup.exe` 
    ```
 3. When it finishes, your installer is here:
    ```
-   Output\USBVirusScannerSetup.exe
+   Output\AllRounderVirusScannerSetup.exe
    ```
 4. Hand that one file to employees, or push it company-wide.
 
 **Deploy silently to many PCs** (SCCM / Intune / Group Policy):
 ```powershell
-USBVirusScannerSetup.exe /VERYSILENT /NORESTART
+AllRounderVirusScannerSetup.exe /VERYSILENT /NORESTART
 ```
 
 > **Refresh the bundled virus signatures later:** re-run
@@ -131,8 +131,8 @@ Two buttons next to **▶ Scan**:
 - **Full Scan** — every drive in the computer, every file. Can take **hours**
   on a big disk, so the program asks you to confirm first.
 
-From the command line: `usbscan scan --profile quick` or
-`usbscan scan --profile full`.
+From the command line: `arvscan scan --profile quick` or
+`arvscan scan --profile full`.
 
 > **IT tip:** big folders you never want scanned (VM images, build caches) go
 > in `config.yaml` under `scanner.exclusions`. Never exclude Downloads, Temp
@@ -157,9 +157,9 @@ you can put a file back if it was a false alarm.
 From the command line:
 
 ```powershell
-usbscan quarantine --delete <ID>     # delete one, forever
-usbscan quarantine --purge           # delete everything (asks to confirm)
-usbscan quarantine --purge --yes     # ...no prompt (for scripts)
+arvscan quarantine --delete <ID>     # delete one, forever
+arvscan quarantine --purge           # delete everything (asks to confirm)
+arvscan quarantine --purge --yes     # ...no prompt (for scripts)
 ```
 
 ### 3. Automatic scanning when you plug in a USB
@@ -185,35 +185,35 @@ and appear in the results table.
 
 ### 4. Using the command line (IT / power users)
 
-Open **PowerShell** in the install folder (`C:\Program Files\USBVirusScanner`)
-or use the installed `usbscan` command:
+Open **PowerShell** in the install folder (`C:\Program Files\AllRounderVirusScanner`)
+or use the installed `arvscan` command:
 
 ```powershell
-usbscan drives                 # list plugged-in removable drives
-usbscan scan E:\               # scan drive E: now (quarantines threats)
-usbscan scan E:\ --no-quarantine   # report only, change nothing
-usbscan watch                  # keep running; auto-scan every USB on insert
-usbscan monitor                # keep running; real-time scan of new files
-usbscan scan --profile quick   # fast scan of common malware locations
-usbscan scan --profile full    # every drive (long!)
-usbscan feeds                  # refresh the malicious-URL list (URLhaus)
-usbscan quarantine             # list quarantined files
-usbscan quarantine --restore <ID> --to D:\recovered.bin   # restore one
-usbscan update                 # refresh the virus signatures
+arvscan drives                 # list plugged-in removable drives
+arvscan scan E:\               # scan drive E: now (quarantines threats)
+arvscan scan E:\ --no-quarantine   # report only, change nothing
+arvscan watch                  # keep running; auto-scan every USB on insert
+arvscan monitor                # keep running; real-time scan of new files
+arvscan scan --profile quick   # fast scan of common malware locations
+arvscan scan --profile full    # every drive (long!)
+arvscan feeds                  # refresh the malicious-URL list (URLhaus)
+arvscan quarantine             # list quarantined files
+arvscan quarantine --restore <ID> --to D:\recovered.bin   # restore one
+arvscan update                 # refresh the virus signatures
 ```
 
 The exit code is **0 = clean**, **1 = threats found**, **2 = bad arguments**,
 **3 = finished with errors** (something couldn't be read — don't treat as
 clean). Handy for scripts.
 
-*(From source, replace `usbscan` with `python cli.py`.)*
+*(From source, replace `arvscan` with `python cli.py`.)*
 
 ### 5. Keep the virus database fresh
 
 Virus detection is only as good as its signatures. Update them regularly:
 
 ```powershell
-usbscan update
+arvscan update
 ```
 
 IT can schedule this (e.g. a daily task) so every PC stays current.
@@ -224,30 +224,30 @@ This trips people up, so here it is plainly:
 
 | If you want... | Do this | Rebuild needed? |
 |----------------|---------|:---:|
-| **Newer virus definitions** (catch the latest malware) | `usbscan update` | No |
-| **Newer malicious-URL lists** (for the download-origin check) | `usbscan feeds` | No |
+| **Newer virus definitions** (catch the latest malware) | `arvscan update` | No |
+| **Newer malicious-URL lists** (for the download-origin check) | `arvscan feeds` | No |
 | **New program features** (e.g. the new Delete button, a bug fix) | build a new `setup.exe` and reinstall it | **Yes** |
 
 **Plain-English rule:**
 
-- `usbscan update` = **new virus definitions only.** It does **not** add
+- `arvscan update` = **new virus definitions only.** It does **not** add
   buttons or features. (And it already runs automatically every day.)
 - **New features live inside the program file (`.exe`).** The only way to get
   them onto a computer is to install a freshly-built `setup.exe`.
 
 **So: to get a new feature like the Delete button, you must rebuild + reinstall.**
-`usbscan update` will not bring it.
+`arvscan update` will not bring it.
 
 **How to update the program (for whoever builds it):**
 
 ```powershell
 # 1) On the build computer - get the new code and build a new installer:
-cd usb-virus-scanner
+cd all-rounder-virus-scanner
 git pull
 powershell -ExecutionPolicy Bypass -File build\build.ps1 -Offline -Version 1.1.0
 
 # 2) On each PC - run the new installer (upgrades in place, keeps your data):
-USBVirusScannerSetup.exe /VERYSILENT /NORESTART
+AllRounderVirusScannerSetup.exe /VERYSILENT /NORESTART
 ```
 
 Your `config.yaml`, the Quarantine folder, and the scheduled tasks all survive
@@ -255,7 +255,7 @@ the upgrade.
 
 ### 6. Where the results are saved
 
-Everything is logged under `C:\ProgramData\USBVirusScanner\`:
+Everything is logged under `C:\ProgramData\AllRounderVirusScanner\`:
 
 | Folder | What's in it |
 |--------|--------------|
@@ -270,7 +270,7 @@ flags but which does nothing:
 
 ```powershell
 python tests\make_eicar.py C:\temp\eicartest
-usbscan scan C:\temp\eicartest
+arvscan scan C:\temp\eicartest
 ```
 
 You should see it reported as a threat. That confirms scanning works.
@@ -281,11 +281,11 @@ You should see it reported as a threat. That confirms scanning works.
 
 | Problem | Fix |
 |---------|-----|
-| "ClamAV not found" notice | The virus engine isn't installed. Use the setup file (option A), or run `usbscan update` after installing ClamAV. Heuristic/hash/YARA still work meanwhile. |
+| "ClamAV not found" notice | The virus engine isn't installed. Use the setup file (option A), or run `arvscan update` after installing ClamAV. Heuristic/hash/YARA still work meanwhile. |
 | Windows blocks the setup file | Click **More info → Run anyway**. It's an in-house app without a paid signing certificate. |
-| USB drive not listed | Click **Refresh**, or make sure the drive is mounted. Try `usbscan drives`. |
-| Auto-scan not happening | It only runs if "Auto-scan on insert" was ticked at install. IT can re-run the installer or the scheduled task `USBVirusScannerWatcher`. |
+| USB drive not listed | Click **Refresh**, or make sure the drive is mounted. Try `arvscan drives`. |
+| Auto-scan not happening | It only runs if "Auto-scan on insert" was ticked at install. IT can re-run the installer or the scheduled task `AllRounderVirusScannerWatcher`. |
 | Scan is slow on an old laptop | It speeds up a lot on the *second* scan (unchanged files are skipped). See "Speed on slow laptops" in the [README](README.md). |
 | A file I trust got quarantined | Open **Quarantine…**, select it, **Restore**. Consider adding an exception with IT. |
 
-Still stuck? Open an issue: https://github.com/stickkersz/usb-virus-scanner/issues
+Still stuck? Open an issue: https://github.com/stickkersz/all-rounder-virus-scanner/issues

@@ -1,9 +1,9 @@
 # All-Round Malware Scanner — Full Spec & Agent Prompt
 
 ## Project identity
-- Repo: `C:\Users\ITPvg\usb-virus-scanner` (name stays for now; scope expands)
+- Repo: `C:\Users\ITPvg\all-rounder-virus-scanner` (name stays for now; scope expands)
 - Language: Python
-- Packaging: PyInstaller → `dist\USBVirusScanner.exe`, `dist\usbscan.exe`
+- Packaging: PyInstaller → `dist\AllRounderVirusScanner.exe`, `dist\arvscan.exe`
 - Installer: Inno Setup 6 via `build\build.ps1`
 - New scope: scan **every local/removable disk**, monitor files **in real time**, and
   add **internet/web protection** (URL reputation + download scanning)
@@ -13,7 +13,7 @@
 ## 1. Module / folder layout
 
 ```
-usb-virus-scanner/
+all-rounder-virus-scanner/
 ├── build/
 │   └── build.ps1
 ├── installer/

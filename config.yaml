@@ -101,19 +101,19 @@ heuristics:
 
 quarantine:
   # Where infected files are moved (kept off the removable drive).
-  path: "C:\\ProgramData\\USBVirusScanner\\Quarantine"
+  path: "C:\\ProgramData\\AllRounderVirusScanner\\Quarantine"
   # XOR-obfuscate quarantined files so they can't be executed accidentally.
   # NOTE: this neutralizes accidental execution; it is not cryptographic security.
   neutralize: true
 
 logging:
-  path: "C:\\ProgramData\\USBVirusScanner\\Logs"
+  path: "C:\\ProgramData\\AllRounderVirusScanner\\Logs"
   level: "INFO"
   # Also emit machine-readable JSONL for SIEM ingestion.
   jsonl: true
 
 reporting:
-  path: "C:\\ProgramData\\USBVirusScanner\\Reports"
+  path: "C:\\ProgramData\\AllRounderVirusScanner\\Reports"
 
 watcher:
   # Auto-scan any removable drive the moment it is inserted.
@@ -129,8 +129,8 @@ web:
   # (a renamed/re-served file from a bad URL may itself be clean).
   check_download_origin: true
   # Where synced feeds are stored (must be writable by the sync task).
-  feeds_dir: "C:\\ProgramData\\USBVirusScanner\\Feeds"
-  # Sync with:  usbscan feeds
+  feeds_dir: "C:\\ProgramData\\AllRounderVirusScanner\\Feeds"
+  # Sync with:  arvscan feeds
   # URLhaus by abuse.ch — free for any use, no API key needed.
   feeds:
     - name: urlhaus
@@ -142,7 +142,7 @@ web:
   safe_browsing_api_key: ""
 
 realtime:
-  # Real-time monitoring (usbscan monitor): scan files the moment they land.
+  # Real-time monitoring (arvscan monitor): scan files the moment they land.
   # Opt-in. Needs the 'watchdog' package (bundled in the installer build).
   enabled: false
   # Directories to watch. Empty = the Quick profile locations (Downloads,

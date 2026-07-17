@@ -3,7 +3,7 @@
 Downloads-folder scanning itself is the realtime monitor (scanner/realtime.py)
 watching Downloads; this module adds the web-specific intelligence on top:
 
-1. **Feed sync** (`usbscan feeds`): download URL blocklists from URLhaus
+1. **Feed sync** (`arvscan feeds`): download URL blocklists from URLhaus
    (abuse.ch — free for any use, no API key) into a local feeds directory.
    Everything works offline after a sync; no lookup leaves the machine.
 2. **Download-origin check**: Windows tags every downloaded file with a
@@ -74,7 +74,7 @@ def _norm_url(url: str) -> str:
 def feed_signature(feeds_dir: Optional[str], suffix: str) -> tuple:
     """(name, mtime, size) for each matching feed file — cheap change check.
 
-    The daily sync task rewrites these files while `usbscan monitor` and the
+    The daily sync task rewrites these files while `arvscan monitor` and the
     GUI run for weeks. Without a change check they'd keep using the snapshot
     taken at logon, so "updated daily" intel would really be "as of last
     reboot".
@@ -256,7 +256,7 @@ class WebProtection:
         return []
 
 
-# ---- feed sync (usbscan feeds) ---------------------------------------------
+# ---- feed sync (arvscan feeds) ---------------------------------------------
 def sync_feeds(cfg: dict, base_dir: str) -> List[str]:
     """Download configured threat-intel feeds. Returns human-readable status
     lines. Atomic per feed: a failed download leaves the previous file intact.

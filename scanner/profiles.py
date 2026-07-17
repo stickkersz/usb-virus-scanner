@@ -154,7 +154,7 @@ def monitor_default_roots() -> List[str]:
     """Default watch roots for the real-time monitor.
 
     Running as SYSTEM (the installer's logon task) -> every user's folders.
-    Running as a person (GUI, `usbscan monitor` in a console) -> that person's.
+    Running as a person (GUI, `arvscan monitor` in a console) -> that person's.
     """
     if running_as_service_account():
         return dedupe_roots(all_users_quick_locations())

@@ -6,7 +6,7 @@ plugged in, quarantines infected files off the drive, and writes audit logs +
 reports for IT.
 
 > **Note:** the installer, exe names and install paths still use the original
-> `USBVirusScanner` naming, so existing deployments keep their quarantine, logs
+> `AllRounderVirusScanner` naming, so existing deployments keep their quarantine, logs
 > and config. Only the app's display name changed.
 
 > 📖 Prefer plain-language, step-by-step instructions with screenshots-in-words?
@@ -21,9 +21,9 @@ Pick the one that fits you.
 
 ## 1. Employees — install from the one setup file (easiest)
 
-Your IT team gives you **`USBVirusScannerSetup.exe`**. Nothing else needed.
+Your IT team gives you **`AllRounderVirusScannerSetup.exe`**. Nothing else needed.
 
-1. **Double-click** `USBVirusScannerSetup.exe`.
+1. **Double-click** `AllRounderVirusScannerSetup.exe`.
 2. If Windows shows "Windows protected your PC", click **More info → Run anyway**.
 3. Click **Yes** at the admin prompt.
 4. Tick the options you want (defaults are fine):
@@ -52,8 +52,8 @@ iscc /?                 # Inno Setup; if "not recognized", install it and reopen
 **Step 3 — get the code:**
 
 ```powershell
-git clone https://github.com/stickkersz/usb-virus-scanner.git
-cd usb-virus-scanner
+git clone https://github.com/stickkersz/all-rounder-virus-scanner.git
+cd all-rounder-virus-scanner
 # already cloned? just update:  git pull
 ```
 
@@ -69,15 +69,15 @@ powershell -ExecutionPolicy Bypass -File build\build.ps1
 ```
 
 The build prints `[0/3] … [3/3]` and ends with
-`DONE. Installer: Output\USBVirusScannerSetup.exe`.
+`DONE. Installer: Output\AllRounderVirusScannerSetup.exe`.
 
-**Result:** **`Output\USBVirusScannerSetup.exe`** — the single file to deploy.
+**Result:** **`Output\AllRounderVirusScannerSetup.exe`** — the single file to deploy.
 
 **Step 5 — smoke-test the build (harmless EICAR test file):**
 
 ```powershell
 python tests\make_eicar.py C:\temp\eicartest
-"C:\Program Files\USBVirusScanner\usbscan.exe" scan C:\temp\eicartest
+"C:\Program Files\AllRounderVirusScanner\arvscan.exe" scan C:\temp\eicartest
 ```
 
 Expect `Verdict : THREATS FOUND` (exit code 1). That confirms the bundled
@@ -87,22 +87,22 @@ confirm auto-scan-on-insert fires.
 **Step 6 — deploy silently across the fleet** (SCCM / Intune / GPO):
 
 ```powershell
-USBVirusScannerSetup.exe /VERYSILENT /NORESTART
+AllRounderVirusScannerSetup.exe /VERYSILENT /NORESTART
 ```
 
 <sub>Build troubleshooting: `iscc not recognized` → install Inno Setup 6 and
 reopen PowerShell. `fetch-vendor.ps1` download fails → pass a current version,
 e.g. `build\fetch-vendor.ps1 -Version 1.4.2`, or drop a ClamAV portable build
 into `vendor\ClamAV\` manually. PyInstaller "module not found" → add it to
-`hidden` in `build\usb_virus_scanner.spec`.</sub>
+`hidden` in `build\all_rounder_virus_scanner.spec`.</sub>
 
 ## 3. Install from source (dev / quick try)
 
 Runs on Windows, macOS, and Linux. Needs **Python 3.9+**.
 
 ```bash
-git clone https://github.com/stickkersz/usb-virus-scanner.git
-cd usb-virus-scanner
+git clone https://github.com/stickkersz/all-rounder-virus-scanner.git
+cd all-rounder-virus-scanner
 python -m pip install -r requirements.txt
 
 python cli.py drives          # list removable drives
@@ -137,25 +137,25 @@ coalesced — one redraw per tick — so even a drive with 100k files stays smoo
 ## CLI (IT / fleet)
 
 ```powershell
-usbscan drives                 # list attached removable drives (bare roots)
-usbscan drives --all           # ...include fixed + mapped network drives
-usbscan drives --all --kinds   # ...labelled with each drive's kind
-usbscan scan E:\               # scan a drive now (quarantines threats)
-usbscan scan E:\ --no-quarantine   # report only, touch nothing
-usbscan watch                  # auto-scan every USB as it is inserted
-usbscan monitor                # real-time: scan files the moment they land
-usbscan update                 # refresh ClamAV signatures (freshclam)
-usbscan quarantine             # list quarantined files
-usbscan quarantine --restore <ID> --to D:\recovered.bin
-usbscan quarantine --delete <ID>       # permanently delete one (irreversible)
-usbscan quarantine --purge             # permanently delete ALL (asks to confirm)
-usbscan quarantine --purge --yes       # ...skip the confirmation
+arvscan drives                 # list attached removable drives (bare roots)
+arvscan drives --all           # ...include fixed + mapped network drives
+arvscan drives --all --kinds   # ...labelled with each drive's kind
+arvscan scan E:\               # scan a drive now (quarantines threats)
+arvscan scan E:\ --no-quarantine   # report only, touch nothing
+arvscan watch                  # auto-scan every USB as it is inserted
+arvscan monitor                # real-time: scan files the moment they land
+arvscan update                 # refresh ClamAV signatures (freshclam)
+arvscan quarantine             # list quarantined files
+arvscan quarantine --restore <ID> --to D:\recovered.bin
+arvscan quarantine --delete <ID>       # permanently delete one (irreversible)
+arvscan quarantine --purge             # permanently delete ALL (asks to confirm)
+arvscan quarantine --purge --yes       # ...skip the confirmation
 ```
 
 Exit codes — usable in scripts / GPO: `0` = clean, `1` = threats found,
 `2` = bad arguments, `3` = completed with errors (**partial coverage** — e.g.
 an unreadable drive; do not treat as a clean scan). (From source, use
-`python cli.py …` instead of `usbscan …`.)
+`python cli.py …` instead of `arvscan …`.)
 
 ## Scan profiles
 
@@ -163,10 +163,10 @@ Instead of naming a path, scan a preset target set. All roots are merged into
 **one** verdict and one report.
 
 ```powershell
-usbscan scan --profile quick    # common malware drop + persistence locations
-usbscan scan --profile full     # every fixed + removable drive
-usbscan scan --profile custom D:\ E:\shared    # exactly these paths
-usbscan scan --profile quick E:\   # quick locations PLUS the E:\ drive
+arvscan scan --profile quick    # common malware drop + persistence locations
+arvscan scan --profile full     # every fixed + removable drive
+arvscan scan --profile custom D:\ E:\shared    # exactly these paths
+arvscan scan --profile quick E:\   # quick locations PLUS the E:\ drive
 ```
 
 Paths given alongside `--profile quick/full` are scanned **in addition** to
@@ -213,7 +213,7 @@ Excluded directories are *pruned*, so a skipped tree costs one comparison
 instead of a full walk. Who wins when an exclusion covers a scan root:
 
 - **A path you named explicitly** (CLI path, `--profile custom`, GUI pick)
-  wins over the exclusion — otherwise `usbscan scan D:\VMs` would report a
+  wins over the exclusion — otherwise `arvscan scan D:\VMs` would report a
   false "0 files, CLEAN". Exclusions deeper inside that tree still apply.
 - **Machine-chosen roots** (drive-insert auto-scan, `--profile quick/full`
   resolution) honor exclusions fully, so you CAN exclude a known-huge drive
@@ -222,7 +222,7 @@ instead of a full walk. Who wins when an exclusion covers a scan root:
 
 ## Real-time monitoring
 
-`usbscan monitor` watches directories for new/changed files and scans them
+`arvscan monitor` watches directories for new/changed files and scans them
 the moment they finish writing — through the **same** engine as manual scans
 (one detection path, one quarantine, one log).
 
@@ -259,7 +259,7 @@ feeds — catching brand-new malware whose payload has no signature yet but
 whose distribution URL is already known-bad.
 
 ```powershell
-usbscan feeds        # sync feeds (URLhaus by abuse.ch — free, no API key)
+arvscan feeds        # sync feeds (URLhaus by abuse.ch — free, no API key)
 ```
 
 - The installer registers a daily sync task (12:30). After a sync everything
@@ -281,7 +281,7 @@ usbscan feeds        # sync feeds (URLhaus by abuse.ch — free, no API key)
 
 ```powershell
 python tests\make_eicar.py C:\temp\eicartest    # writes harmless EICAR test file
-usbscan scan C:\temp\eicartest                  # must report a detection
+arvscan scan C:\temp\eicartest                  # must report a detection
 ```
 
 EICAR is the industry-standard harmless AV test string — every scanner flags
@@ -319,7 +319,7 @@ by technique/behavior:
 **Zero-days (the 450k/day):** the YARA rules match on *techniques* (crypto+VSS
 deletion, download+exec, keylogging APIs, packer markers) and the entropy check
 flags obfuscated binaries — so brand-new variants with no signature still get
-caught. **Keep ClamAV fresh** (`usbscan update`, or the scheduled `freshclam`
+caught. **Keep ClamAV fresh** (`arvscan update`, or the scheduled `freshclam`
 the installer sets up) so signature coverage tracks the daily flood.
 
 Two front-ends (`gui.py`, `cli.py`) drive one shared **`ScanEngine`**. A scan is
@@ -369,7 +369,7 @@ only, and spinning one up costs seconds for no benefit).
 ## Project layout
 
 ```
-usb-virus-scanner/
+all-rounder-virus-scanner/
 ├── cli.py               # CLI entry point (scan/watch/drives/quarantine/update)
 ├── gui.py               # Tkinter desktop GUI
 ├── config.yaml          # all tunables (paths, speed, detection knobs)
@@ -415,7 +415,7 @@ powershell -ExecutionPolicy Bypass -File build\build.ps1 -Offline
 ```
 
 The build auto-detects `vendor\ClamAV\` at compile time: when present, ClamAV
-and the full signature DB are packed inside `USBVirusScannerSetup.exe` and every
+and the full signature DB are packed inside `AllRounderVirusScannerSetup.exe` and every
 online step is removed. Re-run `fetch-vendor.ps1` to refresh the bundled
 signatures. (`vendor\` is git-ignored — ~450 MB of Windows binaries, not
 committed.)
@@ -426,7 +426,7 @@ regenerate it with `python build\make_icon.py` (needs Pillow). Build artifacts
 
 ## Fleet deployment
 
-- **Recommended:** push `USBVirusScannerSetup.exe` via SCCM/Intune/GPO, install
+- **Recommended:** push `AllRounderVirusScannerSetup.exe` via SCCM/Intune/GPO, install
   with `/VERYSILENT /NORESTART`. (Source alternative: push the folder + run
   `install.ps1 -RegisterWatcher`.)
 - The watcher runs as a startup scheduled task under SYSTEM; every inserted USB
@@ -434,7 +434,7 @@ regenerate it with `python build\make_icon.py` (needs Pillow). Build artifacts
 - Ship `events.jsonl` to your SIEM for company-wide visibility.
 - Maintain `signatures/hash_blocklist.txt` centrally and sync it out; add hashes
   as incidents happen.
-- Keep signatures fresh: schedule `usbscan update` (or `freshclam`).
+- Keep signatures fresh: schedule `arvscan update` (or `freshclam`).
 
 ## Updating an already-installed deployment
 
@@ -442,21 +442,21 @@ There are **two completely separate kinds of update**. Know which one you need:
 
 | You want... | Use | Gets new features? | Gets newer virus definitions? |
 |-------------|-----|:---:|:---:|
-| Latest **virus definitions** | `usbscan update` | ❌ | ✅ |
+| Latest **virus definitions** | `arvscan update` | ❌ | ✅ |
 | New **program features / fixes** (e.g. the delete button, GUI changes) | rebuild + reinstall `setup.exe` | ✅ | ✅ |
 
-> **Key point:** `usbscan update` only refreshes the virus database — it does
+> **Key point:** `arvscan update` only refreshes the virus database — it does
 > **not** add program features. New features live inside the `.exe`, so they
 > only arrive by installing a newly-built `setup.exe`.
 
 ### A) Update virus definitions (fast, no rebuild)
 
 Already automatic — the installer registers a daily task
-(`USBVirusScannerUpdate`, noon) that refreshes the ClamAV database. To force one
+(`AllRounderVirusScannerUpdate`, noon) that refreshes the ClamAV database. To force one
 now:
 
 ```powershell
-"C:\Program Files\USBVirusScanner\usbscan.exe" update
+"C:\Program Files\AllRounderVirusScanner\arvscan.exe" update
 ```
 
 ### B) Update the program to a new version (new features / fixes)
@@ -469,35 +469,35 @@ and keeps a single Add/Remove Programs entry. You do **not** uninstall first.
 **Step 0 — Check the version you have now** (on any installed PC):
 
 ```powershell
-"C:\Program Files\USBVirusScanner\usbscan.exe" version
+"C:\Program Files\AllRounderVirusScanner\arvscan.exe" version
 ```
 
 **Step 1 — Build a new installer** (on the BUILD machine, with internet once):
 
 ```powershell
-cd usb-virus-scanner
+cd all-rounder-virus-scanner
 git pull                                   # get the new code
 powershell -ExecutionPolicy Bypass -File build\build.ps1 -Offline -Version 1.1.0
 ```
 
 Bump `-Version` every release (`1.1.0`, `1.2.0`, …) so the number shows correctly
-in `usbscan version` and Add/Remove Programs. Omit it to keep the current number.
-The new `USBVirusScannerSetup.exe` lands in `dist\`.
+in `arvscan version` and Add/Remove Programs. Omit it to keep the current number.
+The new `AllRounderVirusScannerSetup.exe` lands in `dist\`.
 
 **Step 2 — Install the update on each PC.** Pick one:
 
 ```powershell
-# Single PC, interactive: just double-click USBVirusScannerSetup.exe, OR:
-USBVirusScannerSetup.exe
+# Single PC, interactive: just double-click AllRounderVirusScannerSetup.exe, OR:
+AllRounderVirusScannerSetup.exe
 
 # Single PC, unattended (no prompts, no reboot):
-USBVirusScannerSetup.exe /VERYSILENT /NORESTART
+AllRounderVirusScannerSetup.exe /VERYSILENT /NORESTART
 
 # Whole fleet: push that same silent command via GPO / Intune / SCCM.
 ```
 
 > **Close the app first (recommended).** If the GUI or a `monitor`/`watch` run is
-> open, Windows may hold `USBVirusScanner.exe` locked. The silent install still
+> open, Windows may hold `AllRounderVirusScanner.exe` locked. The silent install still
 > completes, but the running old copy keeps its old code until it is closed and
 > reopened. On a locked-file error, close the app (and stop the scheduled tasks)
 > and re-run the installer.
@@ -505,13 +505,13 @@ USBVirusScannerSetup.exe /VERYSILENT /NORESTART
 **Step 3 — Verify the update took:**
 
 ```powershell
-"C:\Program Files\USBVirusScanner\usbscan.exe" version      # shows the new number
-"C:\Program Files\USBVirusScanner\usbscan.exe" scan --profile quick   # smoke test
+"C:\Program Files\AllRounderVirusScanner\arvscan.exe" version      # shows the new number
+"C:\Program Files\AllRounderVirusScanner\arvscan.exe" scan --profile quick   # smoke test
 ```
 
 The real-time monitor and feed tasks are re-created by the installer, so
 protection resumes automatically at the next logon (or start it now from the GUI
-checkbox / `usbscan monitor`).
+checkbox / `arvscan monitor`).
 
 **Kept safe across an upgrade:** the user's `config.yaml`, the Quarantine folder,
 and the scheduled tasks (re-created). Uninstalling also keeps Quarantine, so

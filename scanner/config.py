@@ -79,15 +79,15 @@ DEFAULTS = {
         },
     },
     "quarantine": {
-        "path": r"C:\ProgramData\USBVirusScanner\Quarantine",
+        "path": r"C:\ProgramData\AllRounderVirusScanner\Quarantine",
         "neutralize": True,
     },
     "logging": {
-        "path": r"C:\ProgramData\USBVirusScanner\Logs",
+        "path": r"C:\ProgramData\AllRounderVirusScanner\Logs",
         "level": "INFO",
         "jsonl": True,
     },
-    "reporting": {"path": r"C:\ProgramData\USBVirusScanner\Reports"},
+    "reporting": {"path": r"C:\ProgramData\AllRounderVirusScanner\Reports"},
     "watcher": {
         "auto_scan_on_insert": True,
         "poll_interval": 3,
@@ -99,8 +99,8 @@ DEFAULTS = {
         "check_download_origin": True,
         # Where synced feeds live. ProgramData (not Program Files) because
         # the sync task must be able to write here.
-        "feeds_dir": r"C:\ProgramData\USBVirusScanner\Feeds",
-        # Threat-intel sources for `usbscan feeds`. URLhaus (abuse.ch) is
+        "feeds_dir": r"C:\ProgramData\AllRounderVirusScanner\Feeds",
+        # Threat-intel sources for `arvscan feeds`. URLhaus (abuse.ch) is
         # free for any use including commercial, no API key. type: "urls"
         # (one URL per line) or "sha256" (hash blocklist, merged into the
         # hash layer).

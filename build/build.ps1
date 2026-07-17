@@ -6,10 +6,10 @@
 
     Steps:
       1. Install build deps (PyInstaller) + app deps into the current Python.
-      2. Freeze gui.py + cli.py into dist\USBVirusScanner.exe and dist\usbscan.exe.
-      3. If Inno Setup (iscc) is available, compile Output\USBVirusScannerSetup.exe.
+      2. Freeze gui.py + cli.py into dist\AllRounderVirusScanner.exe and dist\arvscan.exe.
+      3. If Inno Setup (iscc) is available, compile Output\AllRounderVirusScannerSetup.exe.
 
-    Result: Output\USBVirusScannerSetup.exe  -  the single file to deploy.
+    Result: Output\AllRounderVirusScannerSetup.exe  -  the single file to deploy.
 
     Pass -Offline to first download+bundle ClamAV so the installer needs NO
     internet on the employee PC (runs build\fetch-vendor.ps1 for you).
@@ -27,7 +27,7 @@ Set-Location $Root
 Write-Host "== Building USB Virus Scanner installer ==" -ForegroundColor Cyan
 
 # Version handling: -Version stamps both the app (scanner\__init__.py) and the
-# installer so `usbscan version` and Add/Remove Programs stay in sync. If not
+# installer so `arvscan version` and Add/Remove Programs stay in sync. If not
 # given, reuse whatever __version__ the source already has.
 $initFile = "scanner\__init__.py"
 if ($Version) {
@@ -65,12 +65,12 @@ Write-Host "[1/3] Installing Python dependencies..." -ForegroundColor Yellow
 #    build\ scripts folder; dist lands at the project root where installer.iss
 #    expects it (..\dist).
 Write-Host "[2/3] Freezing executables with PyInstaller..." -ForegroundColor Yellow
-& python -m PyInstaller build\usb_virus_scanner.spec --noconfirm --clean `
+& python -m PyInstaller build\all_rounder_virus_scanner.spec --noconfirm --clean `
     --workpath build\_work --distpath dist
-if (-not (Test-Path "dist\USBVirusScanner.exe")) { throw "GUI exe not produced." }
-if (-not (Test-Path "dist\usbscan.exe"))         { throw "CLI exe not produced." }
-Write-Host "  -> dist\USBVirusScanner.exe" -ForegroundColor Green
-Write-Host "  -> dist\usbscan.exe" -ForegroundColor Green
+if (-not (Test-Path "dist\AllRounderVirusScanner.exe")) { throw "GUI exe not produced." }
+if (-not (Test-Path "dist\arvscan.exe"))         { throw "CLI exe not produced." }
+Write-Host "  -> dist\AllRounderVirusScanner.exe" -ForegroundColor Green
+Write-Host "  -> dist\arvscan.exe" -ForegroundColor Green
 
 # 3. compile the installer if Inno Setup is present
 Write-Host "[3/3] Building single-file installer (Inno Setup)..." -ForegroundColor Yellow
@@ -84,7 +84,7 @@ if (-not $iscc) {
 }
 if ($iscc) {
     & $iscc "/DAppVersion=$Version" "build\installer.iss"
-    Write-Host "`nDONE. Installer (v$Version): Output\USBVirusScannerSetup.exe" -ForegroundColor Green
+    Write-Host "`nDONE. Installer (v$Version): Output\AllRounderVirusScannerSetup.exe" -ForegroundColor Green
     Write-Host "Hand that ONE file to employees  -  double-click, Next, done." -ForegroundColor Green
 } else {
     Write-Warning "Inno Setup (iscc) not found. Install it from https://jrsoftware.org/isdl.php"

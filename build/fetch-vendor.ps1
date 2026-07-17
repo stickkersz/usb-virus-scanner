@@ -3,7 +3,7 @@
 
     Downloads the ClamAV engine + the full virus-signature database into
     vendor\ClamAV\. After this, build\build.ps1 bundles them and the resulting
-    USBVirusScannerSetup.exe is FULLY OFFLINE  -  employees need no internet.
+    AllRounderVirusScannerSetup.exe is FULLY OFFLINE  -  employees need no internet.
 
     Usage:
         powershell -ExecutionPolicy Bypass -File build\fetch-vendor.ps1

@@ -284,7 +284,7 @@ def cmd_version(args) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="usbscan",
+        prog="arvscan",
         description="Company all-round malware scanner: removable media, fixed "
                     "disks, and opt-in network drives.")
     p.add_argument("-c", "--config", default=os.path.join(BASE_DIR, "config.yaml"),

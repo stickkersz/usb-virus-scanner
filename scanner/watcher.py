@@ -18,7 +18,7 @@ __all__ = ["DriveWatcher", "list_removable"]
 
 # Not sys.stderr: it is None under pythonw / a PyInstaller windowed build, so
 # writing to it inside the keep-alive handler would kill the watcher loop.
-log = logging.getLogger("usbscanner")
+log = logging.getLogger("arvscanner")
 
 
 class DriveWatcher:

@@ -27,7 +27,7 @@ def resolve_under_base(base_dir: str, path: Optional[str]) -> Optional[str]:
     """Resolve a possibly-relative configured path against the app base dir.
 
     One implementation so a writer and a reader of the same config key can
-    never disagree about where it points (e.g. `usbscan feeds` writing to one
+    never disagree about where it points (e.g. `arvscan feeds` writing to one
     directory while the engine reads another, silently disabling the check).
     """
     if not path:

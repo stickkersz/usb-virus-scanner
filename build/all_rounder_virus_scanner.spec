@@ -1,10 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller spec — builds two standalone onefile executables:
-#   USBVirusScanner.exe   GUI, windowed (no console) — for employees
-#   usbscan.exe           CLI, console — for IT / the watcher scheduled task
+#   AllRounderVirusScanner.exe   GUI, windowed (no console) — for employees
+#   arvscan.exe           CLI, console — for IT / the watcher scheduled task
 #
-# Build:  pyinstaller build\usb_virus_scanner.spec --noconfirm
-# Output: dist\USBVirusScanner.exe  and  dist\usbscan.exe
+# Build:  pyinstaller build\all_rounder_virus_scanner.spec --noconfirm
+# Output: dist\AllRounderVirusScanner.exe  and  dist\arvscan.exe
 #
 # config.yaml and signatures\ are intentionally NOT bundled inside the exe —
 # the installer copies them next to the exe so IT can edit rules/blocklist and
@@ -55,7 +55,7 @@ gui_exe = EXE(
     gui_a.zipfiles,
     gui_a.datas,
     [],
-    name="USBVirusScanner",
+    name="AllRounderVirusScanner",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -84,7 +84,7 @@ cli_exe = EXE(
     cli_a.zipfiles,
     cli_a.datas,
     [],
-    name="usbscan",
+    name="arvscan",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

@@ -62,10 +62,10 @@ Write-Host "Installing Python dependencies..." -ForegroundColor Yellow
 
 # --- 4. Data directories ---------------------------------------------------
 foreach ($d in @(
-    "C:\ProgramData\USBVirusScanner\Quarantine",
-    "C:\ProgramData\USBVirusScanner\Logs",
-    "C:\ProgramData\USBVirusScanner\Reports",
-    "C:\ProgramData\USBVirusScanner\Feeds")) {
+    "C:\ProgramData\AllRounderVirusScanner\Quarantine",
+    "C:\ProgramData\AllRounderVirusScanner\Logs",
+    "C:\ProgramData\AllRounderVirusScanner\Reports",
+    "C:\ProgramData\AllRounderVirusScanner\Feeds")) {
     New-Item -ItemType Directory -Force -Path $d | Out-Null
 }
 
@@ -80,15 +80,15 @@ function Register-ScannerTask([string]$Name, [string]$CliArgs, $Trigger) {
 }
 
 if ($RegisterWatcher) {
-    Register-ScannerTask "USBVirusScannerWatcher" "watch" `
+    Register-ScannerTask "AllRounderVirusScannerWatcher" "watch" `
         (New-ScheduledTaskTrigger -AtLogOn)
 }
 if ($RegisterMonitor) {
-    Register-ScannerTask "USBVirusScannerMonitor" "monitor" `
+    Register-ScannerTask "AllRounderVirusScannerMonitor" "monitor" `
         (New-ScheduledTaskTrigger -AtLogOn)
 }
 if ($RegisterFeeds) {
-    Register-ScannerTask "USBVirusScannerFeeds" "feeds" `
+    Register-ScannerTask "AllRounderVirusScannerFeeds" "feeds" `
         (New-ScheduledTaskTrigger -Daily -At 12:30)
 }
 

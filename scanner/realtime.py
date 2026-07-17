@@ -29,7 +29,7 @@ from .profiles import monitor_default_roots
 # windowed build sys.stderr is None, so the "keep it alive" handler would
 # itself raise AttributeError and kill the thread — protection would stop
 # silently while the UI still showed it as on.
-log = logging.getLogger("usbscanner")
+log = logging.getLogger("arvscanner")
 
 try:
     from watchdog.events import FileSystemEventHandler
